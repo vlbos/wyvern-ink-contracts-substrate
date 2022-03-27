@@ -85,9 +85,9 @@ mod wyvern_atomicizer {
     const WRONG_TRANSACTION_ID: &str =
         "The user specified an invalid transaction id. Abort.";
 
-    /// A wrapper that allows us to encode a blob of bytes.
+    /// A wrapper that allows us to encode a blob of Vec<u8>.
     ///
-    /// We use this to pass the set of untyped (bytes) parameters to the `CallBuilder`.
+    /// We use this to pass the set of untyped (Vec<u8>) parameters to the `CallBuilder`.
     struct CallInput<'a>(&'a [u8]);
 
     impl<'a> scale::Encode for CallInput<'a> {
@@ -130,7 +130,7 @@ mod wyvern_atomicizer {
         #[ink(topic)]
         value: Balance,
         /// Indicates whether the transaction executed successfully. If so the `Ok` value holds
-        /// the output in bytes. The Option is `None` when the transaction was executed through
+        /// the output in Vec<u8>. The Option is `None` when the transaction was executed through
         /// `invoke_transaction` rather than `evaluate_transaction`.
         #[ink(topic)]
         result: Result<Option<Vec<u8>>, Error>,
@@ -158,7 +158,7 @@ mod wyvern_atomicizer {
         }
        
 
-        /// Evaluate a confirmed execution and return its output as bytes.
+        /// Evaluate a confirmed execution and return its output as Vec<u8>.
         ///
         /// Its return value indicates whether the called transaction was successful and contains
         /// its output when successful.
@@ -205,7 +205,7 @@ to,
             Ok(())
         }
 
-        /// Evaluate a confirmed execution and return its output as bytes.
+        /// Evaluate a confirmed execution and return its output as Vec<u8>.
         ///
         /// Its return value indicates whether the called transaction was successful and contains
         /// its output when successful.

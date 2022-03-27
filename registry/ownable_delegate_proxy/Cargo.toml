@@ -13,7 +13,9 @@ ink_lang = { version = "3.0", default-features = false }
 
 scale = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
 scale-info = { version = "2", default-features = false, features = ["derive"], optional = true }
-
+owned_upgradeability_storage = { path = "./proxy/owned_upgradeability_storage", default-features = false }
+owned_upgradeability_proxy = { path = "./proxy/owned_upgradeability_proxy", default-features = false }
+proxy = { path = "./proxy/proxy", default-features = false }
 [lib]
 name = "ownable_delegate_proxy"
 path = "lib.rs"
@@ -31,5 +33,9 @@ std = [
     "ink_primitives/std",
     "scale/std",
     "scale-info/std",
+"owned_upgradeability_storage/std",
+"owned_upgradeability_proxy/std",
+"proxy/std",
+
 ]
 ink-as-dependency = []

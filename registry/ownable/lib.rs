@@ -1,74 +1,66 @@
+//!dev Contract module which provides a basic access control mechanism, where
+//! there is an account (an owner) that can be granted exclusive access to
+//! specific functions.
+//!
+//! By default, the owner account will be the one that deploys the contract. This
+//! can later be changed with {transfer_ownership}.
+//!
+//! This module is used through inheritance. It will make available the modifier
+//! `onlyOwner`, which can be applied to your functions to restrict their use to
+//! the owner.
+
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use ink_lang as ink;
 
-#[ink::contract]
-mod ownable {
+// #[ink::contract]
+// mod ownable {
 
-    /// Defines the storage of your contract.
-    /// Add new fields to the below struct in order
-    /// to add new static storage fields to your contract.
-    #[ink(storage)]
-    pub struct Ownable {
-        /// Stores a single `bool` value on the storage.
-        value: bool,
-    }
+//     #[ink(event)]
+//     pub struct OwnershipTransferred {
+//         #[ink(topic)]
+//         previous_owner: AccountId,
+//         #[ink(topic)]
+//         new_owner: AccountId,
+//     }
 
-    impl Ownable {
-        /// Constructor that initializes the `bool` value to the given `init_value`.
-        #[ink(constructor)]
-        pub fn new(init_value: bool) -> Self {
-            Self { value: init_value }
-        }
+//     /// Defines the storage of your contract.
+//     /// Add new fields to the below struct in order
+//     /// to add new static storage fields to your contract.
+//     #[ink(storage)]
+//     pub struct Ownable {
+//         _owner: AccountId,
+//     }
 
-        /// Constructor that initializes the `bool` value to `false`.
+    #[ink::trait_definition]
+pub trait Ownable {
+        // ///dev Initializes the contract setting the deployer as the initial owner.
+        // #[ink(constructor)]
+        // pub fn new() -> Self {
+        //     ink_lang::utils::initialize_contract(|contract: &mut Self| {
+        //         contract._owner = self.env().caller();
+        //     })
+        // }
+
+        ///dev Returns the of :AccountId the current owner.
+        #[ink(message)]
+        pub fn owner() -> AccountId;
+
+        ///dev Throws if called by any account other than the owner.
+        fn only_owner();
+
+        ///dev Leaves the contract without owner. It will not be possible to call
+        /// `onlyOwner` functions anymore. Can only be called by the current owner.
         ///
-        /// Constructors can delegate to other constructors.
-        #[ink(constructor)]
-        pub fn default() -> Self {
-            Self::new(Default::default())
-        }
-
-        /// A message that can be called on instantiated contracts.
-        /// This one flips the value of the stored `bool` from `true`
-        /// to `false` and vice versa.
+        /// NOTE: Renouncing ownership will leave the contract without an owner,
+        /// thereby removing any functionality that is only available to the owner.
         #[ink(message)]
-        pub fn flip(&mut self) {
-            self.value = !self.value;
-        }
-
-        /// Simply returns the current value of our `bool`.
+        fn renounce_ownership() ;
+        ///dev Transfers ownership of the contract to a new account (`new_owner`).
+        /// Can only be called by the current owner.
         #[ink(message)]
-        pub fn get(&self) -> bool {
-            self.value
-        }
+        fn transfer_ownership(new_owner: AccountId);
+
+        fn _set_owner(new_owner: AccountId);
     }
 
-    /// Unit tests in Rust are normally defined within such a `#[cfg(test)]`
-    /// module and test functions are marked with a `#[test]` attribute.
-    /// The below code is technically just normal Rust code.
-    #[cfg(test)]
-    mod tests {
-        /// Imports all the definitions from the outer scope so we can use them here.
-        use super::*;
-
-        /// Imports `ink_lang` so we can use `#[ink::test]`.
-        use ink_lang as ink;
-
-        /// We test if the default constructor does its job.
-        #[ink::test]
-        fn default_works() {
-            let ownable = Ownable::default();
-            assert_eq!(ownable.get(), false);
-        }
-
-        /// We test a simple use case of our contract.
-        #[ink::test]
-        fn it_works() {
-            let mut ownable = Ownable::new(false);
-            assert_eq!(ownable.get(), false);
-            ownable.flip();
-            assert_eq!(ownable.get(), true);
-        }
-    }
-}

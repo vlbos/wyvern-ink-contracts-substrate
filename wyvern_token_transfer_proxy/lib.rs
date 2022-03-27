@@ -10,37 +10,33 @@ mod wyvern_token_transfer_proxy {
     /// to add new static storage fields to your contract.
     #[ink(storage)]
     pub struct WyvernTokenTransferProxy {
-        /// Stores a single `bool` value on the storage.
-        value: bool,
+        // Authentication registry.
+        registry: AccountId,
     }
 
     impl WyvernTokenTransferProxy {
-        /// Constructor that initializes the `bool` value to the given `init_value`.
         #[ink(constructor)]
-        pub fn new(init_value: bool) -> Self {
-            Self { value: init_value }
+        pub fn new() -> Self {
+            Self {}
         }
+    }
 
-        /// Constructor that initializes the `bool` value to `false`.
-        ///
-        /// Constructors can delegate to other constructors.
-        #[ink(constructor)]
-        pub fn default() -> Self {
-            Self::new(Default::default())
-        }
-
-        /// A message that can be called on instantiated contracts.
-        /// This one flips the value of the stored `bool` from `true`
-        /// to `false` and vice versa.
+    impl TokenTransferProxy for WyvernTokenTransferProxy {
+        /// Call ERC20 `transferFrom`
+        /// @dev Authenticated contract only
+        /// @param token ERC20 token address
+        /// @param from From address
+        /// @param to To address
+        /// @param amount Transfer amount
         #[ink(message)]
-        pub fn flip(&mut self) {
-            self.value = !self.value;
-        }
-
-        /// Simply returns the current value of our `bool`.
-        #[ink(message)]
-        pub fn get(&self) -> bool {
-            self.value
+        pub fn transfer_from(
+            token: AccountId,
+            from: AccountId,
+            to: AccountId,
+            amount: Balance,
+        ) -> bool {
+            require(registry.contracts(self.env().caller()));
+            return ERC20(token).transferFrom(from, to, amount);
         }
     }
 
@@ -56,19 +52,19 @@ mod wyvern_token_transfer_proxy {
         use ink_lang as ink;
 
         /// We test if the default constructor does its job.
-        #[ink::test]
-        fn default_works() {
-            let wyvern_token_transfer_proxy = WyvernTokenTransferProxy::default();
-            assert_eq!(wyvern_token_transfer_proxy.get(), false);
-        }
+        // #[ink::test]
+        // fn default_works() {
+        //     let wyvern_token_transfer_proxy = WyvernTokenTransferProxy::default();
+        //     assert_eq!(wyvern_token_transfer_proxy.get(), false);
+        // }
 
-        /// We test a simple use case of our contract.
-        #[ink::test]
-        fn it_works() {
-            let mut wyvern_token_transfer_proxy = WyvernTokenTransferProxy::new(false);
-            assert_eq!(wyvern_token_transfer_proxy.get(), false);
-            wyvern_token_transfer_proxy.flip();
-            assert_eq!(wyvern_token_transfer_proxy.get(), true);
-        }
+        // /// We test a simple use case of our contract.
+        // #[ink::test]
+        // fn it_works() {
+        //     let mut wyvern_token_transfer_proxy = WyvernTokenTransferProxy::new(false);
+        //     assert_eq!(wyvern_token_transfer_proxy.get(), false);
+        //     wyvern_token_transfer_proxy.flip();
+        //     assert_eq!(wyvern_token_transfer_proxy.get(), true);
+        // }
     }
 }
