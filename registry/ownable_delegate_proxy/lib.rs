@@ -1,5 +1,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
-
+pub use self::ownable_delegate_proxy::{
+    OwnableDelegateProxy,
+    OwnableDelegateProxyRef,
+};
 use ink_lang as ink;
 
 #[ink::contract]
@@ -37,7 +40,7 @@ use proxy::Proxy;
     #[ink(storage)]
     pub struct OwnableDelegateProxy {
   // Current implementation
-        _implementation: Upgradeable<AccountId, NotInitialized>,
+        _implementation: Upgradeable<Hash, NotInitialized>,
 
         // Owner of the contract
         _upgradeability_owner: Upgradeable<AccountId, NotInitialized>,
@@ -49,9 +52,76 @@ use proxy::Proxy;
             // set_upgradeability_owner(owner);
             // _upgradeTo(initialImplementation);
             // assert!(initialImplementation.delegatecall(calldata));
+            let gas_limit=0;
+            let transferred_value = 0;
+            let mut selector=calldata;
+            let mut input=selector.split_off(4);
+            let result = build_call::<<Self as ::ink_lang::reflect::ContractEnv>::Env>()
+                .call_type(
+                    Call::new()
+                        .callee(self.env().account_id())
+                        .gas_limit(gas_limit)
+                        .transferred_value(transferred_value),
+                )
+                .exec_input(
+                    ExecutionInput::new(selector.into()).push_arg(CallInput(&input)),
+                )
+                .returns::<()>()
+                .fire()
+                .map_err(|_| Error::TransactionFailed);
+
+            
+            assert!(result.is_ok())
             Self {}
         }
 
+        /// Changes the `Hash` of the contract where any call that does
+        /// not match a selector of this contract is delegated to.
+        #[ink(message)]
+        pub fn change_delegate_code(&mut self, new_code_hash: Hash) {
+            assert_eq!(
+                self.env().caller(),
+                *self._upgradeability_owner,
+                "caller {:?} does not have sufficient permissions, only {:?} does",
+                self.env().caller(),
+                *self._upgradeability_owner,
+            );
+            *self._implementation = new_code_hash;
+        }
+ /// Fallback message for a contract call that doesn't match any
+        /// of the other message selectors. Proxy contract delegates the execution
+        /// of that message to the `forward_to` contract with all input data.
+        ///
+        /// # Note:
+        ///
+        /// - We allow payable messages here and would forward any optionally supplied
+        ///   value as well.
+        /// - If the self receiver were `forward(&mut self)` here, this would not
+        ///   have any effect whatsoever on the contract we forward to.
+        #[ink(message, payable, selector = _)]
+        pub fn forward(&self) -> u32 {
+            ink_env::call::build_call::<ink_env::DefaultEnvironment>()
+                .call_type(DelegateCall::new().code_hash(*self._implementation))
+                .call_flags(
+                    ink_env::CallFlags::default()
+                        // We don't plan to use the input data after the delegated call, so the 
+                        // input data can be forwarded to delegated contract to reduce the gas usage.
+                        .set_forward_input(true)
+                        // We don't plan to return back to that contract after execution, so we 
+                        // marked delegated call as "tail", to end the execution of the contract.
+                        .set_tail_call(true),
+                )
+                .fire()
+                .unwrap_or_else(|err| {
+                    panic!(
+                        "delegate call to {:?} failed due to {:?}",
+                        *self._implementation, err
+                    )
+                });
+            unreachable!(
+                "the forwarded call will never return since `tail_call` was set"
+            );
+        }
     }
 
 impl OwnedUpgradeabilityStorage for OwnableDelegateProxy {
@@ -148,7 +218,28 @@ impl OwnedUpgradeabilityProxy for OwnableDelegateProxy {
         pub fn upgrade_to_and_call(implementation: AccountId, data: Vec<u8>) {
             self.only_proxy_owner();
             self.upgrade_to(implementation);
-            assert!(self.env().account_id().delegatecall(data));
+
+            let gas_limit=0;
+            let transferred_value = 0;
+            let mut selector=data;
+            let mut input=selector.split_off(4);
+            let result = build_call::<<Self as ::ink_lang::reflect::ContractEnv>::Env>()
+                .call_type(
+                    Call::new()
+                        .callee(self.env().account_id())
+                        .gas_limit(gas_limit)
+                        .transferred_value(transferred_value),
+                )
+                .exec_input(
+                    ExecutionInput::new(selector.into()).push_arg(CallInput(&input)),
+                )
+                .returns::<()>()
+                .fire()
+                .map_err(|_| Error::TransactionFailed);
+
+            
+            assert!(result.is_ok())
+            // assert!(self.env().account_id().delegatecall(data));
         }
 
     }

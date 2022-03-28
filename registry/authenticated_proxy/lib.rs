@@ -2,12 +2,46 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
+
+pub use self::authenticated_proxy::{
+    AuthenticatedProxy,
+    AuthenticatedProxyRef,
+};
+
 use ink_lang as ink;
 
 #[ink::contract]
 mod authenticated_proxy {
+    use ink_env::call::{
+        build_call,
+        Call,
+        ExecutionInput,
+    };
+    use ink_prelude::vec::Vec;
+    use ink_storage::{
+        traits::{
+            PackedLayout,
+            SpreadAllocate,
+            SpreadLayout,
+        },
+        Mapping,
+    };
+    use scale::Output;
          use token_recipient::TokenRecipient; 
 use owned_upgradeability_storage::OwnedUpgradeabilityStorage;
+
+    /// A wrapper that allows us to encode a blob of bytes.
+    ///
+    /// We use this to pass the set of untyped (bytes) parameters to the `CallBuilder`.
+    struct CallInput<'a>(&'a [u8]);
+
+    impl<'a> scale::Encode for CallInput<'a> {
+        fn encode_to<T: Output + ?Sized>(&self, dest: &mut T) {
+            dest.write(self.0);
+        }
+    }
+
+
     /// Delegate call could be used to atomically transfer multiple assets owned by the proxy contract with one order.
     #[derive(scale::Encode, scale::Decode, Clone, Copy, SpreadLayout, PackedLayout)]
     #[cfg_attr(
@@ -110,13 +144,30 @@ use owned_upgradeability_storage::OwnedUpgradeabilityStorage;
                 self.env().caller() == user
                     || (!revoked && registry.contracts(self.env().caller()))
             );
-        let result = false;
-            if (how_to_call == HowToCall::Call) {
-                // result = dest.call(calldata);
-            } else if (how_to_call == HowToCall::DelegateCall) {
-                // result = dest.delegatecall(calldata);
-            }
-            return result;
+            // if (how_to_call == HowToCall::Call) {
+            //      result = dest.call(calldata);
+            // } else if (how_to_call == HowToCall::DelegateCall) {
+            //      result = dest.delegatecall(calldata);
+            // }
+            let gas_limit=0;
+            let transferred_value = 0;
+            let mut selector=calldata;
+            let mut input=selector.split_off(4);
+            let result = build_call::<<Self as ::ink_lang::reflect::ContractEnv>::Env>()
+                .call_type(
+                    Call::new()
+                        .callee(dest)
+                        .gas_limit(gas_limit)
+                        .transferred_value(transferred_value),
+                )
+                .exec_input(
+                    ExecutionInput::new(selector.into()).push_arg(CallInput(&input)),
+                )
+                .returns::<()>()
+                .fire()
+                .map_err(|_| Error::TransactionFailed);
+
+             result.is_ok()
         }
 
         ///Execute a message call and assert success
@@ -230,20 +281,20 @@ impl OwnedUpgradeabilityStorage for OwnableDelegateProxy {
         /// Imports `ink_lang` so we can use `#[ink::test]`.
         use ink_lang as ink;
 
-        /// We test if the default constructor does its job.
-        #[ink::test]
-        fn default_works() {
-            let authenticated_proxy = AuthenticatedProxy::default();
-            assert_eq!(authenticated_proxy.get(), false);
-        }
+        // /// We test if the default constructor does its job.
+        // #[ink::test]
+        // fn default_works() {
+        //     let authenticated_proxy = AuthenticatedProxy::default();
+        //     assert_eq!(authenticated_proxy.get(), false);
+        // }
 
-        /// We test a simple use case of our contract.
-        #[ink::test]
-        fn it_works() {
-            let mut authenticated_proxy = AuthenticatedProxy::new(false);
-            assert_eq!(authenticated_proxy.get(), false);
-            authenticated_proxy.flip();
-            assert_eq!(authenticated_proxy.get(), true);
-        }
+        // /// We test a simple use case of our contract.
+        // #[ink::test]
+        // fn it_works() {
+        //     let mut authenticated_proxy = AuthenticatedProxy::new(false);
+        //     assert_eq!(authenticated_proxy.get(), false);
+        //     authenticated_proxy.flip();
+        //     assert_eq!(authenticated_proxy.get(), true);
+        // }
     }
 }

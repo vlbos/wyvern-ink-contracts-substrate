@@ -35,8 +35,41 @@ mod wyvern_token_transfer_proxy {
             to: AccountId,
             amount: Balance,
         ) -> bool {
-            require(registry.contracts(self.env().caller()));
-            return ERC20(token).transferFrom(from, to, amount);
+            // require(registry.contracts(self.env().caller()));
+            // return ERC20(token).transferFrom(from, to, amount);
+ let transferred_value= Balance::default();
+                let gas_limit= 0;
+for (i, &callee) in callees.iter().enumerate() {
+                let result  = build_call::<<Self as ::ink_lang::reflect::ContractEnv>::Env>()
+                       .call_type(
+                    Call::new().callee(callee)
+                    .gas_limit(gas_limit)
+                    .transferred_value(transferred_value)
+                    ).exec_input(
+                        ExecutionInput::new(selector.into())
+                            .push_arg(from)
+                            .push_arg(to)
+                            .push_arg(values[i]),
+                    )
+                    .returns::<Vec<u8>>()
+                    .fire()
+                    .map_err(|_| Error::TransactionFailed);
+
+            for (i, &callee) in callees.iter().enumerate() {
+                let result  = build_call::<<Self as ::ink_lang::reflect::ContractEnv>::Env>()
+                       .call_type(
+                    Call::new().callee(callee)
+                    .gas_limit(gas_limit)
+                    .transferred_value(transferred_value)
+                    ).exec_input(
+                        ExecutionInput::new(selector.into())
+                            .push_arg(from)
+                            .push_arg(to)
+                            .push_arg(values[i]),
+                    )
+                    .returns::<()>()
+                    .fire()
+                    .map_err(|_| Error::TransactionFailed);
         }
     }
 

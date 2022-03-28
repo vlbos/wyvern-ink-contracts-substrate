@@ -4,6 +4,8 @@ use ink_lang as ink;
 
 #[ink::contract]
 mod wyvern_proxy_registry {
+    use authenticated_proxy::AuthenticatedProxyRef;
+    use ownable_delegate_proxy::OwnableDelegateProxyRef;
 
     //  Delay period for adding an authenticated contract.
     //    This mitigates a particular class of potential attack on the Wyvern DAO (which owns this registry) - if at any point the value of assets held by proxy contracts exceeded the value of half the WYV supply (votes in the DAO),
@@ -29,23 +31,51 @@ mod wyvern_proxy_registry {
         _owner: AccountId,
 
         /// DelegateProxy implementation contract. Must be initialized.
-        delegateProxyImplementation: AccountId,
+        delegateProxyImplementation: AuthenticatedProxyRef,
 
         /// Authenticated proxies by user.
-        proxies: Mapping<AccountId, AccountId>,
+        proxies: Mapping<AccountId, OwnableDelegateProxyRef>,
 
         /// Contracts pending access.
         pending: Mapping<AccountId, u32>,
 
         /// Contracts allowed to call those proxies.
         contracts: Mapping<AccountId, bool>,
+        ownable_delegate_proxy_code_hash: Hash,
     }
 
     impl WyvernProxyRegistry {
+        /// Instantiate a `delegator` contract with the given sub-contract codes.
+        #[ink(constructor)]
+        pub fn new(
+            authenticatedproxy_code_hash: Hash,
+            ownable_delegate_proxy_code_hash: Hash,
+        ) -> Self {
+            let total_balance = Self::env().balance();
+            let init_value: i32 = 0;
+            let version: u32 = 0;
+            let salt = version.to_le_bytes();
+            let authenticatedproxy = AccumulatorRef::new(init_value)
+                .endowment(total_balance / 4)
+                .code_hash(authenticatedproxy_code_hash)
+                .salt_bytes(salt)
+                .instantiate()
+                .unwrap_or_else(|error| {
+                    panic!(
+                        "failed at instantiating the Accumulator contract: {:?}",
+                        error
+                    )
+                });
+
+            Self {
+                delegateProxyImplementation: authenticatedproxy,
+                ownable_delegate_proxy_code_hash,
+            }
+        }
+
         /// Grant authentication to the initial Exchange protocol contract
         ///dev No delay, can only be called once - after that the standard registry process with a delay must be used
         ///param auth_address :AccountId of the contract to grant authentication
-
         #[ink(message)]
         pub fn grant_initial_authentication(&mut self, auth_address: AccountId) {
             // onlyOwner
@@ -82,7 +112,7 @@ mod wyvern_proxy_registry {
             assert!(
                 !self.contracts.get(&addr).unwrap_or(false)
                     && self.pending.get(&addr).unwrap_or(0) != 0
-                    &&self.pending.get(&addr).unwrap_or(0) + DELAY_PERIOD
+                    && self.pending.get(&addr).unwrap_or(0) + DELAY_PERIOD
                         < self.env().block_timestamp()
             );
             self.pending.insert(&addr, &0);
@@ -110,9 +140,25 @@ mod wyvern_proxy_registry {
                     == AccountId::default()
             );
             // proxy = new OwnableDelegateProxy(self.env().caller(), delegateProxyImplementation, abi.encodeWithSignature("initialize(AccountId,AccountId)", self.env().caller(), AccountId(this)));
-            let proxy = AccountId::default();
-            self.proxies.insert(&self.env().caller(), &proxy);
-            proxy
+            let total_balance = Self::env().balance();
+            let init_value: i32 = 0;
+            let version: u32 = 0;
+            let salt = version.to_le_bytes();
+
+            let _ownable_delegate_proxy = OwnableDelegateProxyRef::new(init_value)
+                .endowment(total_balance / 4)
+                .code_hash(self.ownable_delegate_proxy_code_hash)
+                .salt_bytes(salt)
+                .instantiate()
+                .unwrap_or_else(|error| {
+                    panic!(
+                        "failed at instantiating the Accumulator contract: {:?}",
+                        error
+                    )
+                });
+            self.proxies
+                .insert(&self.env().caller(), &_ownable_delegate_proxy);
+            _ownable_delegate_proxy
         }
         /// Panic if the sender is no owner of the wallet.
         fn ensure_caller_is_owner(&self) {
@@ -158,7 +204,10 @@ mod wyvern_proxy_registry {
         #[ink(message)]
         pub fn transfer_ownership(new_owner: AccountId) {
             self.only_owner();
-            assert!(new_owner != AccountId::default(),"Ownable: new owner is the zero address"); //, 
+            assert!(
+                new_owner != AccountId::default(),
+                "Ownable: new owner is the zero address"
+            ); //,
             _set_owner(new_owner);
         }
 

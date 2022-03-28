@@ -55,25 +55,15 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-pub use self::wyvern_atomicizer::{
-    WyvernAtomicizer,
-};
+pub use self::wyvern_atomicizer::WyvernAtomicizer;
 use ink_lang as ink;
 
 #[ink::contract]
 mod wyvern_atomicizer {
-    use ink_env::call::{
-        build_call,
-        Call,
-        ExecutionInput,
-    };
+    use ink_env::call::{build_call, Call, ExecutionInput};
     use ink_prelude::vec::Vec;
     use ink_storage::{
-        traits::{
-            PackedLayout,
-            SpreadAllocate,
-            SpreadLayout,
-        },
+        traits::{PackedLayout, SpreadAllocate, SpreadLayout},
         Mapping,
     };
     use scale::Output;
@@ -82,8 +72,7 @@ mod wyvern_atomicizer {
     const MAX_OWNERS: u32 = 50;
 
     type TransactionId = u32;
-    const WRONG_TRANSACTION_ID: &str =
-        "The user specified an invalid transaction id. Abort.";
+    const WRONG_TRANSACTION_ID: &str = "The user specified an invalid transaction id. Abort.";
 
     /// A wrapper that allows us to encode a blob of Vec<u8>.
     ///
@@ -95,7 +84,6 @@ mod wyvern_atomicizer {
             dest.write(self.0);
         }
     }
-
 
     /// Errors that can occur upon calling this contract.
     #[derive(Copy, Clone, Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
@@ -119,7 +107,6 @@ mod wyvern_atomicizer {
         to: AccountId,
     }
 
-
     /// Emitted when a transaction was executed.
     #[ink(event)]
     pub struct Execution {
@@ -138,9 +125,7 @@ mod wyvern_atomicizer {
 
     #[ink(storage)]
     #[derive(SpreadAllocate)]
-    pub struct WyvernAtomicizer {
-      
-    }
+    pub struct WyvernAtomicizer {}
     impl WyvernAtomicizer {
         /// The only constructor of the contract.
         ///
@@ -152,11 +137,8 @@ mod wyvern_atomicizer {
         /// If `requirement` violates our invariant.
         #[ink(constructor)]
         pub fn new() -> Self {
-            ink_lang::utils::initialize_contract(|contract: &mut Self| {
-
-            })
+            ink_lang::utils::initialize_contract(|contract: &mut Self| {})
         }
-       
 
         /// Evaluate a confirmed execution and return its output as Vec<u8>.
         ///
@@ -172,17 +154,18 @@ mod wyvern_atomicizer {
             to: AccountId,
             values: Vec<Balance>,
         ) -> Result<(), Error> {
-
-                let transferred_value= Balance::default();
-                let gas_limit= 0;
+            let transferred_value = Balance::default();
+            let gas_limit = 0;
 
             for (i, &callee) in callees.iter().enumerate() {
-                let result  = build_call::<<Self as ::ink_lang::reflect::ContractEnv>::Env>()
-                       .call_type(
-                    Call::new().callee(callee)
-                    .gas_limit(gas_limit)
-                    .transferred_value(transferred_value)
-                    ).exec_input(
+                let result = build_call::<<Self as ::ink_lang::reflect::ContractEnv>::Env>()
+                    .call_type(
+                        Call::new()
+                            .callee(callee)
+                            .gas_limit(gas_limit)
+                            .transferred_value(transferred_value),
+                    )
+                    .exec_input(
                         ExecutionInput::new(selector.into())
                             .push_arg(from)
                             .push_arg(to)
@@ -191,17 +174,13 @@ mod wyvern_atomicizer {
                     .returns::<()>()
                     .fire()
                     .map_err(|_| Error::TransactionFailed);
-   self.env().emit_event(Execution {
-                callee,
-                value:values[i],
-                result: result.map(|_| None),
-            });
+                self.env().emit_event(Execution {
+                    callee,
+                    value: values[i],
+                    result: result.map(|_| None),
+                });
             }
-   self.env().emit_event(Confirmation {
-                selector,
-                from,
-to,
-            });
+            self.env().emit_event(Confirmation { selector, from, to });
             Ok(())
         }
 
@@ -219,15 +198,17 @@ to,
             to: AccountId,
             values: Vec<Balance>,
         ) -> Result<(), Error> {
-               let transferred_value= Balance::default();
-                let gas_limit= 0;
+            let transferred_value = Balance::default();
+            let gas_limit = 0;
             for (i, &callee) in callees.iter().enumerate() {
-                let result  = build_call::<<Self as ::ink_lang::reflect::ContractEnv>::Env>()
-                       .call_type(
-                    Call::new().callee(callee)
-                    .gas_limit(gas_limit)
-                    .transferred_value(transferred_value)
-                    ).exec_input(
+                let result = build_call::<<Self as ::ink_lang::reflect::ContractEnv>::Env>()
+                    .call_type(
+                        Call::new()
+                            .callee(callee)
+                            .gas_limit(gas_limit)
+                            .transferred_value(transferred_value),
+                    )
+                    .exec_input(
                         ExecutionInput::new(selector.into())
                             .push_arg(from)
                             .push_arg(to)
@@ -236,34 +217,25 @@ to,
                     .returns::<Vec<u8>>()
                     .fire()
                     .map_err(|_| Error::TransactionFailed);
-   self.env().emit_event(Execution {
-                callee,
-                value:values[i],
-                result: result.clone().map(Some),
-            });
+                self.env().emit_event(Execution {
+                    callee,
+                    value: values[i],
+                    result: result.clone().map(Some),
+                });
             }
-   self.env().emit_event(Confirmation {
-                selector,
-                from,
-to,
-            });
+            self.env().emit_event(Confirmation { selector, from, to });
             Ok(())
         }
-
     }
 
     #[cfg(test)]
     mod tests {
         use super::*;
-        use ink_env::{
-            call,
-            test,
-        };
+        use ink_env::{call, test};
         use ink_lang as ink;
 
         const WALLET: [u8; 32] = [7; 32];
 
-       
         fn set_caller(sender: AccountId) {
             ink_env::test::set_caller::<Environment>(sender);
         }
@@ -296,6 +268,5 @@ to,
             let owners = vec![accounts.alice, accounts.bob, accounts.eve];
             WyvernAtomicizer::new()
         }
-      
     }
 }
