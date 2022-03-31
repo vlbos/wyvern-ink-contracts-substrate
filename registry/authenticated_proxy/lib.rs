@@ -2,33 +2,19 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-
-pub use self::authenticated_proxy::{
-    AuthenticatedProxy,
-    AuthenticatedProxyRef,
-};
+pub use self::authenticated_proxy::{AuthenticatedProxy, AuthenticatedProxyRef};
 
 use ink_lang as ink;
-
+mod upgradeable;
 #[ink::contract]
 mod authenticated_proxy {
-    use ink_env::call::{
-        build_call,
-        Call,
-        ExecutionInput,
-    };
+    use crate::upgradeable::{NotInitialized, Upgradeable};
+    use ink_env::call::{build_call, Call, ExecutionInput};
     use ink_prelude::vec::Vec;
-    use ink_storage::{
-        traits::{
-            PackedLayout,
-            SpreadAllocate,
-            SpreadLayout,
-        },
-        Mapping,
-    };
+    use ink_storage::traits::SpreadAllocate;
+    use owned_upgradeability_storage::OwnedUpgradeabilityStorage;
     use scale::Output;
-         use token_recipient::TokenRecipient; 
-use owned_upgradeability_storage::OwnedUpgradeabilityStorage;
+    use token_recipient::TokenRecipient;
 
     /// A wrapper that allows us to encode a blob of bytes.
     ///
@@ -40,7 +26,6 @@ use owned_upgradeability_storage::OwnedUpgradeabilityStorage;
             dest.write(self.0);
         }
     }
-
 
     /// Delegate call could be used to atomically transfer multiple assets owned by the proxy contract with one order.
     #[derive(scale::Encode, scale::Decode, Clone, Copy, SpreadLayout, PackedLayout)]
@@ -60,7 +45,7 @@ use owned_upgradeability_storage::OwnedUpgradeabilityStorage;
         TransactionFailed,
     }
 
-// TokenRecipient
+    // TokenRecipient
     #[ink(event)]
     pub struct ReceivedEther {
         #[ink(topic)]
@@ -78,7 +63,6 @@ use owned_upgradeability_storage::OwnedUpgradeabilityStorage;
         extra_data: Vec<u8>,
     }
 
-
     /// Event fired when the proxy access is revoked or unrevoked.
     #[ink(event)]
     pub struct Revoked {
@@ -91,6 +75,11 @@ use owned_upgradeability_storage::OwnedUpgradeabilityStorage;
     #[ink(storage)]
     #[derive(SpreadAllocate)]
     pub struct AuthenticatedProxy {
+        // Current implementation
+        _implementation: Upgradeable<Hash, NotInitialized>,
+
+        // Owner of the contract
+        _upgradeability_owner: Upgradeable<AccountId, NotInitialized>,
         /// Whether initialized.
         initialized: bool,
 
@@ -98,7 +87,7 @@ use owned_upgradeability_storage::OwnedUpgradeabilityStorage;
         user: AccountId,
 
         /// Associated registry with contract authentication information.
-        registry: ProxyRegistry,
+        registry: AccountId,
 
         /// Whether access has been revoked.
         revoked: bool,
@@ -108,17 +97,29 @@ use owned_upgradeability_storage::OwnedUpgradeabilityStorage;
         /// Constructor that initializes the `bool` value to the given `init_value`.
         #[ink(constructor)]
         pub fn new() -> Self {
-            Self {}
+            ink_lang::utils::initialize_contract(|_contract: &mut Self| {
+                // owners.sort_unstable();
+                // owners.dedup();
+                // ensure_requirement_is_valid(owners.len() as u32, requirement);
+
+                // for owner in &owners {
+                //     contract.is_owner.insert(owner, &());
+                // }
+
+                // contract.owners = owners;
+                // contract.transaction_list = Default::default();
+                // contract.requirement = requirement;
+            })
         }
 
         ///Initialize an AuthenticatedProxy
-        ///@param addrUser of :AccountId user on whose behalf this proxy will act
+        ///@param addr_user of :AccountId user on whose behalf this proxy will act
         ///@param addr_registry of :AccountId ProxyRegistry contract which will manage this proxy
         #[ink(message)]
-        pub fn initialize(addrUser: AccountId, addr_registry: AccountId) {
+        pub fn initialize(&mut self, addr_user: AccountId, addr_registry: AccountId) {
             assert!(!self.initialized);
             self.initialized = true;
-            self.user = addrUser;
+            self.user = addr_user;
             self.registry = addr_registry;
         }
 
@@ -126,7 +127,7 @@ use owned_upgradeability_storage::OwnedUpgradeabilityStorage;
         ///@dev Can be called by the user only
         ///@param revoke Whether or not to revoke access
         #[ink(message)]
-        pub fn set_revoke(revoke: bool) {
+        pub fn set_revoke(&mut self, revoke: bool) {
             assert_eq!(self.env().caller(), self.user);
             self.revoked = revoke;
             self.env().emit_event(Revoked { revoked: revoke });
@@ -139,20 +140,18 @@ use owned_upgradeability_storage::OwnedUpgradeabilityStorage;
         ///@param calldata Calldata to send
         ///@return Result of the call (success or failure)
         #[ink(message)]
-        pub fn proxy(dest: AccountId, how_to_call: HowToCall, calldata: Vec<u8>) -> bool {
-            assert!(
-                self.env().caller() == user
-                    || (!revoked && registry.contracts(self.env().caller()))
-            );
-            // if (how_to_call == HowToCall::Call) {
-            //      result = dest.call(calldata);
-            // } else if (how_to_call == HowToCall::DelegateCall) {
-            //      result = dest.delegatecall(calldata);
-            // }
-            let gas_limit=0;
+        pub fn proxy(&self, dest: AccountId, _how_to_call: HowToCall, calldata: Vec<u8>) -> bool {
+            assert!(self.env().caller() == self.user || (!self.revoked)); //&& self.registry.contracts(self.env().caller())
+                                                                          // if (how_to_call == HowToCall::Call) {
+                                                                          //      result = dest.call(calldata);
+                                                                          // } else if (how_to_call == HowToCall::DelegateCall) {
+                                                                          //      result = dest.delegatecall(calldata);
+                                                                          // }
+            let gas_limit = 0;
             let transferred_value = 0;
-            let mut selector=calldata;
-            let mut input=selector.split_off(4);
+            let mut selector = calldata;
+            let input = selector.split_off(4);
+
             let result = build_call::<<Self as ::ink_lang::reflect::ContractEnv>::Env>()
                 .call_type(
                     Call::new()
@@ -161,13 +160,16 @@ use owned_upgradeability_storage::OwnedUpgradeabilityStorage;
                         .transferred_value(transferred_value),
                 )
                 .exec_input(
-                    ExecutionInput::new(selector.into()).push_arg(CallInput(&input)),
+                    ExecutionInput::new(
+                        [selector[0], selector[1], selector[2], selector[3]].into(),
+                    )
+                    .push_arg(CallInput(&input)),
                 )
                 .returns::<()>()
                 .fire()
                 .map_err(|_| Error::TransactionFailed);
 
-             result.is_ok()
+            result.is_ok()
         }
 
         ///Execute a message call and assert success
@@ -178,20 +180,20 @@ use owned_upgradeability_storage::OwnedUpgradeabilityStorage;
         ///@param calldata Calldata to send
 
         #[ink(message)]
-        pub fn proxy_assert(dest: AccountId, how_to_call: HowToCall, calldata: Vec<u8>) {
-            assert!(proxy(dest, how_to_call, calldata));
+        pub fn proxy_assert(&self, dest: AccountId, how_to_call: HowToCall, calldata: Vec<u8>) {
+            assert!(self.proxy(dest, how_to_call, calldata));
         }
     }
 
-impl TokenRecipient for AuthenticatedProxy{
-
+    impl TokenRecipient for AuthenticatedProxy {
         ///@dev Receive tokens and generate a log event
         ///@param from from :AccountId which to transfer tokens
         ///@param value Amount of tokens to transfer
         ///@param token of :AccountId token
         ///@param extra_data Additional data to log
         #[ink(message)]
-        pub fn receive_approval(
+        fn receive_approval(
+            &self,
             from: AccountId,
             value: Balance,
             token: AccountId,
@@ -214,7 +216,7 @@ impl TokenRecipient for AuthenticatedProxy{
                     ExecutionInput::new(selector.into())
                         .push_arg(from)
                         .push_arg(self.env().account_id())
-                        .push_arg(values),
+                        .push_arg(value),
                 )
                 .returns::<()>()
                 .fire()
@@ -240,7 +242,7 @@ impl TokenRecipient for AuthenticatedProxy{
         /// The method needs to be annotated with `payable`; only then it is
         /// allowed to receive value as part of the call.
         #[ink(message, payable)]
-        pub fn was_it_ten(&self) {
+        fn was_it_ten(&self) {
             ink_env::debug_println!("received payment: {}", self.env().transferred_value());
             assert!(self.env().transferred_value() == 10, "payment was not ten");
             self.env().emit_event(ReceivedEther {
@@ -250,25 +252,34 @@ impl TokenRecipient for AuthenticatedProxy{
         }
     }
 
-
-impl OwnedUpgradeabilityStorage for OwnableDelegateProxy {
-     
-///dev Tells the of :AccountId the owner
+    impl OwnedUpgradeabilityStorage for AuthenticatedProxy {
+        ///dev Tells the of :AccountId the owner
         ///return the of :AccountId the owner
         #[ink(message)]
-        pub fn upgradeability_owner() -> AccountId {
+        fn upgradeability_owner(&self) -> AccountId {
             *self._upgradeability_owner
         }
 
         ///dev Sets the of :AccountId the owner
         #[ink(message)]
-        pub fn set_upgradeability_owner(new_upgradeability_owner: AccountId) {
+        fn set_upgradeability_owner(&mut self, new_upgradeability_owner: AccountId) {
             *self._upgradeability_owner = new_upgradeability_owner;
         }
 
+        ///dev Tells the of :AccountId the current implementation
+        ///return of :AccountId the current implementation
+        #[ink(message)]
+        fn implementation(&self) -> Hash {
+            *self._implementation
+        }
 
+        ///dev Tells the proxy type (EIP 897)
+        ///return Proxy type, 2 for forwarding proxy
+        #[ink(message)]
+        fn proxy_type(&self) -> u32 {
+            2
+        }
     }
-
 
     /// Unit tests in Rust are normally defined within such a `#[cfg(test)]`
     /// module and test functions are marked with a `#[test]` attribute.
