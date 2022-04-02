@@ -15,7 +15,7 @@ ink_prelude = { version = "3.0.0",  default-features = false }
 scale = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
 scale-info = { version = "2", default-features = false, features = ["derive"], optional = true }
 token_recipient = { path = "./common/token_recipient", default-features = false }
-auth_upgradeability_storage = { path = "./proxy/auth_upgradeability_storage", default-features = false }
+owned_upgradeability_storage = { path = "./proxy/owned_upgradeability_storage", default-features = false }
 
 [lib]
 name = "authenticated_proxy"
@@ -38,6 +38,6 @@ std = [
     "scale/std",
     "scale-info/std",
 "token_recipient/std",
-"auth_upgradeability_storage/std",
+"owned_upgradeability_storage/std",
 ]
 ink-as-dependency = []

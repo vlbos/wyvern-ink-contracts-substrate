@@ -12,7 +12,7 @@ mod authenticated_proxy {
     use ink_env::call::{build_call, Call, ExecutionInput};
     use ink_prelude::vec::Vec;
     // use ink_storage::traits::SpreadAllocate;
-    use auth_upgradeability_storage::AuthUpgradeabilityStorage;
+    use owned_upgradeability_storage::OwnedUpgradeabilityStorage;
     use scale::Output;
     use token_recipient::TokenRecipient;
     use ink_storage::{
@@ -262,7 +262,7 @@ mod authenticated_proxy {
         }
     }
 
-    impl AuthUpgradeabilityStorage for AuthenticatedProxy {
+    impl OwnedUpgradeabilityStorage for AuthenticatedProxy {
         ///dev Tells the of :AccountId the owner
         ///return the of :AccountId the owner
         #[ink(message)]

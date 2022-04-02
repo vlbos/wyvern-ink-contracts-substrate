@@ -22,7 +22,7 @@ mod wyvern_proxy_registry {
     //    a malicious but rational attacker could buy half the Wyvern and grant themselves access to all the proxy contracts. A delay period renders this attack nonthreatening - given two weeks, if that happened, users would have
     //    plenty of time to notice and transfer their assets.
     const DELAY_PERIOD: Timestamp = 2;
-
+    const name: &str = = "Project Wyvern Proxy Registry";
     #[ink(event)]
     pub struct OwnershipTransferred {
         #[ink(topic)]
@@ -59,30 +59,12 @@ mod wyvern_proxy_registry {
         /// Instantiate a `delegator` contract with the given sub-contract codes.
         #[ink(constructor)]
         pub fn new(
-            authenticatedproxy_code_hash: Hash,
+            authenticated_proxy: AccountId,
             _ownable_delegate_proxy_code_hash: Hash,
         ) -> Self {
-            let total_balance = Self::env().balance();
-            // let init_value: i32 = 0;
-            let version: u32 = 0;
-            let salt = version.to_le_bytes();
-            // let _authenticatedproxy = AuthenticatedProxyRef::new()
-            //     .endowment(total_balance / 4)
-            //     .code_hash(authenticatedproxy_code_hash)
-            //     .salt_bytes(salt)
-            //     .instantiate()
-            //     .unwrap_or_else(|error| {
-            //         panic!(
-            //             "failed at instantiating the Accumulator contract: {:?}",
-            //             error
-            //         )
-            //     });
-
-            // Self {
-            //     delegate_proxy_implementation: authenticatedproxy,
-            //     ownable_delegate_proxy_code_hash,
-            // }
             ink_lang::utils::initialize_contract(|_contract: &mut Self| {
+                _contract.delegate_proxy_implementation=authenticated_proxy;
+                _contract.ownable_delegate_proxy_code_hash=_ownable_delegate_proxy_code_hash;
                 // owners.sort_unstable();
                 // owners.dedup();
                 // ensure_requirement_is_valid(owners.len() as u32, requirement);
