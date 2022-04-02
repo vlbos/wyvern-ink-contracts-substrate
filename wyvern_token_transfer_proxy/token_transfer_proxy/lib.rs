@@ -14,7 +14,8 @@ use ink_lang as ink;
 // // Authentication registry.
 //     registry: AccountId,
 // }
-
+use ink_env::AccountId;
+type Balance = <ink_env::DefaultEnvironment as ink_env::Environment>::Balance;
 #[ink::trait_definition]
 pub trait TokenTransferProxy {
     /// Call ERC20 `transferFrom`
@@ -24,13 +25,10 @@ pub trait TokenTransferProxy {
     /// @param to To address
     /// @param amount Transfer amount
     #[ink(message)]
-    pub fn transfer_from(
+    fn transfer_from(&mut self,
         token: AccountId,
         from: AccountId,
         to: AccountId,
         amount: Balance,
-    ) -> bool {
-        require(registry.contracts(self.env().caller()));
-        return ERC20(token).transferFrom(from, to, amount);
-    }
+    );
 }

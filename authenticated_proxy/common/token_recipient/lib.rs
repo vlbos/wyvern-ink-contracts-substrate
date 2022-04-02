@@ -9,9 +9,7 @@ use ink_lang as ink;
     use ink_prelude::vec::Vec;
 
 use ink_env::AccountId;
-// use ink_env::AccountId;
-// use ink_env::*;//balance::Balance;
-        type Balance=u128;
+type Balance = <ink_env::DefaultEnvironment as ink_env::Environment>::Balance;
 
 #[ink::trait_definition]
 pub trait TokenRecipient {

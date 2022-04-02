@@ -8,20 +8,12 @@ mod upgradeable;
 
 #[ink::contract]
 mod ownable_delegate_proxy {
-  use ink_env::call::{
-        build_call,
-        Call,
-DelegateCall,
-        ExecutionInput,
-    };
+
+
+  use ink_env::call::{        build_call,        Call,DelegateCall,        ExecutionInput,    };
     use ink_prelude::vec::Vec;
-    use ink_storage::{
-        traits::{
-            PackedLayout,
-            SpreadAllocate,
-            SpreadLayout,
-        },
-    };
+    use ink_storage::traits::SpreadAllocate;
+
     use scale::Output;
  use crate::upgradeable::{
         NotInitialized,
@@ -82,7 +74,7 @@ use proxy::Proxy;
 
     impl OwnableDelegateProxy {
         #[ink(constructor)]
-        pub fn new(owner: AccountId, initial_implementation: AccountId, calldata: Vec<u8>) -> Self {
+        pub fn new(_owner: AccountId, _initial_implementation: AccountId, _calldata: Vec<u8>) -> Self {
             // set_upgradeability_owner(owner);
             // _upgrade_to_inner(initialImplementation);
             // assert!(initialImplementation.delegatecall(calldata));
@@ -168,8 +160,28 @@ use proxy::Proxy;
                 "the forwarded call will never return since `tail_call` was set"
             );
         }
+        #[ink(message)]
+        pub fn contract_address(&self) ->AccountId{
+            self.env().account_id()
+        }
     }
+// impl SpreadLayout for OwnableDelegateProxyRef {
+//     const FOOTPRINT: u64 = 1;
 
+//     fn pull_spread(ptr: &mut KeyPtr) -> Self {
+//         Self {
+//             value: SpreadLayout::pull_spread(ptr),
+//         }
+//     }
+
+//     fn push_spread(&self, ptr: &mut KeyPtr) {
+//         SpreadLayout::push_spread(&self.value, ptr);
+//     }
+
+//     fn clear_spread(&self, ptr: &mut KeyPtr) {
+//         SpreadLayout::clear_spread(&self.value, ptr);
+//     }
+// }
 impl OwnedUpgradeabilityStorage for OwnableDelegateProxy {
      
 ///dev Tells the of :AccountId the owner

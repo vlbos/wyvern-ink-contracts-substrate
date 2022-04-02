@@ -1,5 +1,5 @@
 [package]
-name = "token_transfer_proxy"
+name = "auth_upgradeability_storage"
 version = "0.1.0"
 authors = ["ShengLi vlbos2018@gmail.com"]
 edition = "2021"
@@ -15,11 +15,11 @@ scale = { package = "parity-scale-codec", version = "3", default-features = fals
 scale-info = { version = "2", default-features = false, features = ["derive"], optional = true }
 
 [lib]
-name = "token_transfer_proxy"
+name = "auth_upgradeability_storage"
 path = "lib.rs"
 crate-type = [
 	# Used for normal contract Wasm blobs.
-	"cdylib",
+	"rlib",
 ]
 
 [features]

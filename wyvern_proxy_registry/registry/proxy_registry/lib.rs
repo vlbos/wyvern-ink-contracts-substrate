@@ -51,12 +51,12 @@ use ink_lang as ink;
 //         contracts: Mapping<AccountId, bool>,
 
 //     }
-
+use ink_env::AccountId;
 #[ink::trait_definition]
 pub trait ProxyRegistry {
     // /// Constructor that initializes the `bool` value to the given `init_value`.
     // #[ink(constructor)]
-    // pub fn new() -> Self {
+    //fn  new() -> Self {
     //     Self {}
     // }
 
@@ -64,25 +64,26 @@ pub trait ProxyRegistry {
     ///dev ProxyRegistry owner only
     ///param addr to :AccountId which to grant permissions
     #[ink(message)]
-    pub fn start_grant_authentication(addr: AccountId);
+   fn  start_grant_authentication(&mut self,addr: AccountId);
     /// End the process to nable access for specified contract after delay period has passed.
     ///dev ProxyRegistry owner only
     ///param addr to :AccountId which to grant permissions
     #[ink(message)]
-    pub fn end_grant_authentication(addr: AccountId);
+   fn  end_grant_authentication(&mut self,addr: AccountId);
 
     /// Revoke access for specified contract. Can be done instantly.
     ///dev ProxyRegistry owner only
     ///param addr of :AccountId which to revoke permissions
     #[ink(message)]
-    pub fn revoke_authentication(addr: AccountId);
+   fn  revoke_authentication(&mut self,addr: AccountId);
 
     /// Register a proxy contract with this registry
     ///dev Must be called by the user which the proxy is for, creates a new AuthenticatedProxy
     ///return New AuthenticatedProxy contract
     #[ink(message)]
-    pub fn register_proxy() -> AccountId;
+   fn  register_proxy(&mut self) ;
 
     /// Panic if the sender is no owner of the wallet.
+ #[ink(message)]
     fn ensure_caller_is_owner(&self);
 }

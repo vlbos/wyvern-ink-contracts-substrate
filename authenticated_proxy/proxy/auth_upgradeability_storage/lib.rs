@@ -5,7 +5,7 @@ use ink_lang as ink;
 use ink_env::AccountId;
 use ink_env::Hash;
 #[ink::trait_definition]
-pub trait OwnedUpgradeabilityStorage {
+pub trait AuthUpgradeabilityStorage {
    ///dev Tells the of :AccountId the owner
         ///return the of :AccountId the owner
         #[ink(message)]

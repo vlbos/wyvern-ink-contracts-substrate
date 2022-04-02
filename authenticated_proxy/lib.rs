@@ -11,11 +11,17 @@ mod authenticated_proxy {
     use crate::upgradeable::{NotInitialized, Upgradeable};
     use ink_env::call::{build_call, Call, ExecutionInput};
     use ink_prelude::vec::Vec;
-    use ink_storage::traits::SpreadAllocate;
-    use owned_upgradeability_storage::OwnedUpgradeabilityStorage;
+    // use ink_storage::traits::SpreadAllocate;
+    use auth_upgradeability_storage::AuthUpgradeabilityStorage;
     use scale::Output;
     use token_recipient::TokenRecipient;
-
+    use ink_storage::{
+        traits::{
+            PackedLayout,
+            SpreadAllocate,
+            SpreadLayout,
+        },
+    };
     /// A wrapper that allows us to encode a blob of bytes.
     ///
     /// We use this to pass the set of untyped (bytes) parameters to the `CallBuilder`.
@@ -183,6 +189,10 @@ mod authenticated_proxy {
         pub fn proxy_assert(&self, dest: AccountId, how_to_call: HowToCall, calldata: Vec<u8>) {
             assert!(self.proxy(dest, how_to_call, calldata));
         }
+        #[ink(message)]
+        pub fn contract_address(&self) ->AccountId{
+            self.env().account_id()
+        }
     }
 
     impl TokenRecipient for AuthenticatedProxy {
@@ -252,7 +262,7 @@ mod authenticated_proxy {
         }
     }
 
-    impl OwnedUpgradeabilityStorage for AuthenticatedProxy {
+    impl AuthUpgradeabilityStorage for AuthenticatedProxy {
         ///dev Tells the of :AccountId the owner
         ///return the of :AccountId the owner
         #[ink(message)]
