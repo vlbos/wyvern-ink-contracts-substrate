@@ -6,23 +6,16 @@ use ink_lang as ink;
 #[ink::contract]
 mod wyvern_proxy_registry {
     use ink_storage::Mapping;
-    // use authenticated_proxy::AuthenticatedProxyRef;
-    // use ownable_delegate_proxy::OwnableDelegateProxyRef;
-    use ink_prelude::vec::Vec;
     use ink_storage::traits::SpreadAllocate;
     use ownable::Ownable;
     use proxy_registry::ProxyRegistry;
-
-    //  use crate::upgradeable::{
-    //         NotInitialized,
-    //         Upgradeable,
-    //     };
+//  use ownable_delegate_proxy::OwnableDelegateProxyRef;
     //  Delay period for adding an authenticated contract.
     //    This mitigates a particular class of potential attack on the Wyvern DAO (which owns this registry) - if at any point the value of assets held by proxy contracts exceeded the value of half the WYV supply (votes in the DAO),
     //    a malicious but rational attacker could buy half the Wyvern and grant themselves access to all the proxy contracts. A delay period renders this attack nonthreatening - given two weeks, if that happened, users would have
     //    plenty of time to notice and transfer their assets.
     const DELAY_PERIOD: Timestamp = 2;
-    const name: &str = = "Project Wyvern Proxy Registry";
+    // const NAME: &str = "Project Wyvern Proxy Registry";
     #[ink(event)]
     pub struct OwnershipTransferred {
         #[ink(topic)]
@@ -42,7 +35,7 @@ mod wyvern_proxy_registry {
         _owner: AccountId,
 
         /// DelegateProxy implementation contract. Must be initialized.
-        delegate_proxy_implementation: AccountId,
+        delegate_proxy_implementation: Hash,
 
         /// Authenticated proxies by user.
         proxies: Mapping<AccountId, AccountId>,
@@ -52,30 +45,16 @@ mod wyvern_proxy_registry {
 
         /// Contracts allowed to call those proxies.
         contracts: Mapping<AccountId, bool>,
-        ownable_delegate_proxy_code_hash: Hash,
     }
 
     impl WyvernProxyRegistry {
         /// Instantiate a `delegator` contract with the given sub-contract codes.
         #[ink(constructor)]
         pub fn new(
-            authenticated_proxy: AccountId,
-            _ownable_delegate_proxy_code_hash: Hash,
+            authenticated_proxy_hash: Hash,
         ) -> Self {
             ink_lang::utils::initialize_contract(|_contract: &mut Self| {
-                _contract.delegate_proxy_implementation=authenticated_proxy;
-                _contract.ownable_delegate_proxy_code_hash=_ownable_delegate_proxy_code_hash;
-                // owners.sort_unstable();
-                // owners.dedup();
-                // ensure_requirement_is_valid(owners.len() as u32, requirement);
-
-                // for owner in &owners {
-                //     contract.is_owner.insert(owner, &());
-                // }
-
-                // contract.owners = owners;
-                // contract.transaction_list = Default::default();
-                // contract.requirement = requirement;
+                _contract.delegate_proxy_implementation = authenticated_proxy_hash;
             })
         }
 
@@ -84,11 +63,20 @@ mod wyvern_proxy_registry {
         ///param auth_address :AccountId of the contract to grant authentication
         #[ink(message)]
         pub fn grant_initial_authentication(&mut self, auth_address: AccountId) {
-            // onlyOwner
+            self.only_owner();
             assert!(!self.initial_address_set);
             self.initial_address_set = true;
             // contracts[auth_address] = true;
             self.contracts.insert(&auth_address, &true);
+        }
+
+        #[ink(message)]
+        pub fn contracts_contains(&mut self, auth_address: AccountId) -> bool {
+            self.contracts.get(&auth_address).unwrap_or(false)
+        }
+        #[ink(message)]
+        pub fn get_proxy(&mut self, auth_address: AccountId) -> AccountId {
+            self.proxies.get(&auth_address).unwrap_or_default()
         }
     }
 
@@ -106,7 +94,7 @@ mod wyvern_proxy_registry {
             self.pending.insert(&addr, &self.env().block_timestamp());
         }
 
-        /// End the process to nable access for specified contract after delay period has passed.
+        /// End the process to able access for specified contract after delay period has passed.
         ///dev ProxyRegistry owner only
         ///param addr to :AccountId which to grant permissions
         #[ink(message)]
@@ -138,33 +126,14 @@ mod wyvern_proxy_registry {
         ///dev Must be called by the user which the proxy is for, creates a new AuthenticatedProxy
         ///return New AuthenticatedProxy contract
         #[ink(message)]
-        fn register_proxy(&mut self) {
+        fn register_proxy(&mut self,ownable_delegate_proxy_address:AccountId) {
             assert!(self.proxies.get(self.env().caller()).is_none());
-            // proxy = new OwnableDelegateProxy(self.env().caller(), delegate_proxy_implementation, abi.encodeWithSignature("initialize(AccountId,AccountId)", self.env().caller(), AccountId(this)));
-            //             let total_balance = Self::env().balance();
-            //             // let init_value: i32 = 0;
-            //             let version: u32 = 0;
-            //             let salt = version.to_le_bytes();
-            // let owner= AccountId::default();
-            // let initial_implementation= AccountId::default();
-            //   let  calldata:Vec<u8> =Vec::new();
-            // let _ownable_delegate_proxy = OwnableDelegateProxyRef::new(owner,initial_implementation,calldata)
-            //     .endowment(total_balance / 4)
-            //     .code_hash(self.ownable_delegate_proxy_code_hash)
-            //     .salt_bytes(salt)
-            //     .instantiate()
-            //     .unwrap_or_else(|error| {
-            //         panic!(
-            //             "failed at instantiating the Accumulator contract: {:?}",
-            //             error
-            //         )
-            //     });
-            // self.proxies
-            //     .insert(&self.env().caller(), &_ownable_delegate_proxy.contract_address());
+            self.proxies
+                .insert(&self.env().caller(), &ownable_delegate_proxy_address);
         }
         /// Panic if the sender is no owner of the wallet.
         #[ink(message)]
-        fn ensure_caller_is_owner(&self) {
+        fn ensure_from_wallet(&self) {
             assert_eq!(self.env().caller(), self.env().account_id());
         }
     }
@@ -218,7 +187,6 @@ mod wyvern_proxy_registry {
         fn _set_owner(&mut self, new_owner: AccountId) {
             let old_owner: AccountId = self._owner;
             self._owner = new_owner;
-            // emit OwnershipTransferred(oldOwner, new_owner);
             self.env().emit_event(OwnershipTransferred {
                 previous_owner: old_owner,
                 new_owner,

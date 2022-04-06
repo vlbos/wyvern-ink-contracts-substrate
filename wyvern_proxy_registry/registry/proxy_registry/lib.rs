@@ -81,9 +81,9 @@ pub trait ProxyRegistry {
     ///dev Must be called by the user which the proxy is for, creates a new AuthenticatedProxy
     ///return New AuthenticatedProxy contract
     #[ink(message)]
-   fn  register_proxy(&mut self) ;
+   fn  register_proxy(&mut self,ownable_delegate_proxy_address:AccountId) ;
 
     /// Panic if the sender is no owner of the wallet.
  #[ink(message)]
-    fn ensure_caller_is_owner(&self);
+    fn ensure_from_wallet(&self);
 }

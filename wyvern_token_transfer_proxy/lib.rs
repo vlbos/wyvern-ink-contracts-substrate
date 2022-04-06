@@ -52,6 +52,23 @@ mod wyvern_token_transfer_proxy {
             // return ERC20(token).transferFrom(from, to, amount);
             let transferred_value = Balance::default();
             let gas_limit = 0;
+            let contracts_selector = [0x80, 0x05, 0xa4, 0x70];
+            let result = build_call::<<Self as ::ink_lang::reflect::ContractEnv>::Env>()
+                .call_type(
+                    Call::new()
+                        .callee(self.registry)
+                        .gas_limit(gas_limit)
+                        .transferred_value(transferred_value),
+                )
+                .exec_input(
+                    ExecutionInput::new(contracts_selector.into())
+                        .push_arg(self.env().caller()),
+                       )
+                .returns::<Vec<u8>>()
+                .fire()
+                .map_err(|_| Error::TransactionFailed);
+            assert!(result.is_ok());
+
            let selector = [0x0b, 0x39, 0x6f, 0x18];
             let result = build_call::<<Self as ::ink_lang::reflect::ContractEnv>::Env>()
                 .call_type(

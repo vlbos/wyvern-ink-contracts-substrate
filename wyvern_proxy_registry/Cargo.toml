@@ -15,7 +15,7 @@ ink_prelude = { version = "3.0.0",  default-features = false }
 scale = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
 scale-info = { version = "2", default-features = false, features = ["derive"], optional = true }
 # authenticated_proxy = { path = "./registry/authenticated_proxy", default-features = false }
-ownable_delegate_proxy = {  version = "0.1.0", path = "./ownable_delegate_proxy",default-features = false }
+# ownable_delegate_proxy = {  version = "0.1.0", path = "ownable_delegate_proxy",default-features = false }
 ownable = { path = "./registry/ownable", default-features = false }
 proxy_registry = { path = "./registry/proxy_registry", default-features = false }
 [lib]
@@ -36,6 +36,10 @@ std = [
     "ink_prelude/std",
     "scale/std",
     "scale-info/std",
-"ownable_delegate_proxy/std",
+# "ownable_delegate_proxy/std",
 ]
 ink-as-dependency = []
+[workspace]
+members = [
+    "ownable_delegate_proxy",
+]

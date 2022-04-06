@@ -12,16 +12,9 @@ mod authenticated_proxy {
     use ink_env::call::{build_call, Call, ExecutionInput};
     use ink_prelude::vec::Vec;
     // use ink_storage::traits::SpreadAllocate;
-    use owned_upgradeability_storage::OwnedUpgradeabilityStorage;
+    use ink_storage::traits::{PackedLayout, SpreadAllocate, SpreadLayout};
     use scale::Output;
     use token_recipient::TokenRecipient;
-    use ink_storage::{
-        traits::{
-            PackedLayout,
-            SpreadAllocate,
-            SpreadLayout,
-        },
-    };
     /// A wrapper that allows us to encode a blob of bytes.
     ///
     /// We use this to pass the set of untyped (bytes) parameters to the `CallBuilder`.
@@ -81,22 +74,17 @@ mod authenticated_proxy {
     #[ink(storage)]
     #[derive(SpreadAllocate)]
     pub struct AuthenticatedProxy {
-        // Current implementation
-        _implementation: Upgradeable<Hash, NotInitialized>,
-
-        // Owner of the contract
-        _upgradeability_owner: Upgradeable<AccountId, NotInitialized>,
         /// Whether initialized.
-        initialized: bool,
+        initialized: Upgradeable<bool, NotInitialized>,
 
         /// which :AccountId owns this proxy.
-        user: AccountId,
+        user: Upgradeable<AccountId, NotInitialized>,
 
         /// Associated registry with contract authentication information.
-        registry: AccountId,
+        registry: Upgradeable<AccountId, NotInitialized>,
 
         /// Whether access has been revoked.
-        revoked: bool,
+        revoked: Upgradeable<bool, NotInitialized>,
     }
 
     impl AuthenticatedProxy {
@@ -104,17 +92,7 @@ mod authenticated_proxy {
         #[ink(constructor)]
         pub fn new() -> Self {
             ink_lang::utils::initialize_contract(|_contract: &mut Self| {
-                // owners.sort_unstable();
-                // owners.dedup();
-                // ensure_requirement_is_valid(owners.len() as u32, requirement);
-
-                // for owner in &owners {
-                //     contract.is_owner.insert(owner, &());
-                // }
-
-                // contract.owners = owners;
-                // contract.transaction_list = Default::default();
-                // contract.requirement = requirement;
+               
             })
         }
 
@@ -123,10 +101,10 @@ mod authenticated_proxy {
         ///@param addr_registry of :AccountId ProxyRegistry contract which will manage this proxy
         #[ink(message)]
         pub fn initialize(&mut self, addr_user: AccountId, addr_registry: AccountId) {
-            assert!(!self.initialized);
-            self.initialized = true;
-            self.user = addr_user;
-            self.registry = addr_registry;
+            assert!(!*self.initialized);
+            *self.initialized = true;
+            *self.user = addr_user;
+            *self.registry = addr_registry;
         }
 
         ///Set the revoked flag (allows a user to revoke ProxyRegistry access)
@@ -134,8 +112,8 @@ mod authenticated_proxy {
         ///@param revoke Whether or not to revoke access
         #[ink(message)]
         pub fn set_revoke(&mut self, revoke: bool) {
-            assert_eq!(self.env().caller(), self.user);
-            self.revoked = revoke;
+            assert_eq!(self.env().caller(), *self.user);
+            *self.revoked = revoke;
             self.env().emit_event(Revoked { revoked: revoke });
         }
 
@@ -147,7 +125,7 @@ mod authenticated_proxy {
         ///@return Result of the call (success or failure)
         #[ink(message)]
         pub fn proxy(&self, dest: AccountId, _how_to_call: HowToCall, calldata: Vec<u8>) -> bool {
-            assert!(self.env().caller() == self.user || (!self.revoked)); //&& self.registry.contracts(self.env().caller())
+            assert!(self.env().caller() == *self.user || (!*self.revoked)); //&& self.registry.contracts(self.env().caller())
                                                                           // if (how_to_call == HowToCall::Call) {
                                                                           //      result = dest.call(calldata);
                                                                           // } else if (how_to_call == HowToCall::DelegateCall) {
@@ -190,7 +168,7 @@ mod authenticated_proxy {
             assert!(self.proxy(dest, how_to_call, calldata));
         }
         #[ink(message)]
-        pub fn contract_address(&self) ->AccountId{
+        pub fn contract_address(&self) -> AccountId {
             self.env().account_id()
         }
     }
@@ -259,35 +237,6 @@ mod authenticated_proxy {
                 sender: self.env().caller(),
                 amount: self.env().transferred_value(),
             });
-        }
-    }
-
-    impl OwnedUpgradeabilityStorage for AuthenticatedProxy {
-        ///dev Tells the of :AccountId the owner
-        ///return the of :AccountId the owner
-        #[ink(message)]
-        fn upgradeability_owner(&self) -> AccountId {
-            *self._upgradeability_owner
-        }
-
-        ///dev Sets the of :AccountId the owner
-        #[ink(message)]
-        fn set_upgradeability_owner(&mut self, new_upgradeability_owner: AccountId) {
-            *self._upgradeability_owner = new_upgradeability_owner;
-        }
-
-        ///dev Tells the of :AccountId the current implementation
-        ///return of :AccountId the current implementation
-        #[ink(message)]
-        fn implementation(&self) -> Hash {
-            *self._implementation
-        }
-
-        ///dev Tells the proxy type (EIP 897)
-        ///return Proxy type, 2 for forwarding proxy
-        #[ink(message)]
-        fn proxy_type(&self) -> u32 {
-            2
         }
     }
 
