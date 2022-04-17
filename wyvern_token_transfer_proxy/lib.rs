@@ -6,8 +6,9 @@ use ink_lang as ink;
 mod wyvern_token_transfer_proxy {
 
     use ink_env::call::{build_call, Call,  ExecutionInput};
+    use ink_prelude::vec::Vec;
 
-    use token_transfer_proxy::TokenTransferProxy;
+    // use token_transfer_proxy::TokenTransferProxy;
 
    /// Errors that can occur upon calling this contract.
     #[derive(Copy, Clone, Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
@@ -30,9 +31,9 @@ mod wyvern_token_transfer_proxy {
         pub fn new(registry: AccountId) -> Self {
             Self { registry }
         }
-    }
+    // }
 
-    impl TokenTransferProxy for WyvernTokenTransferProxy {
+    // impl TokenTransferProxy for WyvernTokenTransferProxy {
 
         /// Call ERC20 `transferFrom`
         ///  Authenticated contract only
@@ -41,7 +42,7 @@ mod wyvern_token_transfer_proxy {
         /// to To address
         /// amount Transfer amount
         #[ink(message)]
-        fn transfer_from(
+        pub fn transfer_from(
             &mut self,
             token: AccountId,
             from: AccountId,

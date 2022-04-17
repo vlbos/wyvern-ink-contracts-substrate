@@ -39,7 +39,3 @@ std = [
 # "ownable_delegate_proxy/std",
 ]
 ink-as-dependency = []
-[workspace]
-members = [
-    "ownable_delegate_proxy",
-]

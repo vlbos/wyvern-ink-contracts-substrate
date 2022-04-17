@@ -77,13 +77,15 @@ pub trait ProxyRegistry {
     #[ink(message)]
    fn  revoke_authentication(&mut self,addr: AccountId);
 
+    /// Panic if the sender is no owner of the wallet.
+    //  #[ink(message)]
+    //     fn ensure_from_wallet(&self);
+
     /// Register a proxy contract with this registry
     ///dev Must be called by the user which the proxy is for, creates a new AuthenticatedProxy
     ///return New AuthenticatedProxy contract
     #[ink(message)]
    fn  register_proxy(&mut self,ownable_delegate_proxy_address:AccountId) ;
 
-    /// Panic if the sender is no owner of the wallet.
- #[ink(message)]
-    fn ensure_from_wallet(&self);
+
 }

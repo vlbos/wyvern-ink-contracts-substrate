@@ -5,11 +5,11 @@ use ink_lang as ink;
 
 #[ink::contract]
 mod wyvern_proxy_registry {
-    use ink_storage::Mapping;
     use ink_storage::traits::SpreadAllocate;
-    use ownable::Ownable;
-    use proxy_registry::ProxyRegistry;
-//  use ownable_delegate_proxy::OwnableDelegateProxyRef;
+    use ink_storage::Mapping;
+    // use ownable::Ownable;
+    // use proxy_registry::ProxyRegistry;
+    //  use ownable_delegate_proxy::OwnableDelegateProxyRef;
     //  Delay period for adding an authenticated contract.
     //    This mitigates a particular class of potential attack on the Wyvern DAO (which owns this registry) - if at any point the value of assets held by proxy contracts exceeded the value of half the WYV supply (votes in the DAO),
     //    a malicious but rational attacker could buy half the Wyvern and grant themselves access to all the proxy contracts. A delay period renders this attack nonthreatening - given two weeks, if that happened, users would have
@@ -50,10 +50,9 @@ mod wyvern_proxy_registry {
     impl WyvernProxyRegistry {
         /// Instantiate a `delegator` contract with the given sub-contract codes.
         #[ink(constructor)]
-        pub fn new(
-            authenticated_proxy_hash: Hash,
-        ) -> Self {
+        pub fn new(authenticated_proxy_hash: Hash) -> Self {
             ink_lang::utils::initialize_contract(|_contract: &mut Self| {
+                _contract._owner = Self::env().caller();
                 _contract.delegate_proxy_implementation = authenticated_proxy_hash;
             })
         }
@@ -78,14 +77,34 @@ mod wyvern_proxy_registry {
         pub fn get_proxy(&mut self, auth_address: AccountId) -> AccountId {
             self.proxies.get(&auth_address).unwrap_or_default()
         }
-    }
+        fn _set_owner(&mut self, new_owner: AccountId) {
+            let old_owner: AccountId = self._owner;
+            self._owner = new_owner;
+            self.env().emit_event(OwnershipTransferred {
+                previous_owner: old_owner,
+                new_owner,
+            });
+        }
 
-    impl ProxyRegistry for WyvernProxyRegistry {
+        ///dev Throws if called by any account other than the owner.
+        fn only_owner(&self) {
+            // require(owner() == _msgSender(), "Ownable: caller is not the owner");
+            // _;
+            assert_eq!(self.env().caller(), self.owner());
+        }
+
+     /// Panic if the sender is no owner of the wallet.
+        fn ensure_from_wallet(&self) {
+            assert_eq!(self.env().caller(), self.env().account_id());
+        }
+    // }
+
+    // impl ProxyRegistry for WyvernProxyRegistry {
         /// Start the process to enable access for specified contract. Subject to delay period.
         ///dev ProxyRegistry owner only
         ///param addr to :AccountId which to grant permissions
         #[ink(message)]
-        fn start_grant_authentication(&mut self, addr: AccountId) {
+      pub  fn start_grant_authentication(&mut self, addr: AccountId) {
             self.only_owner();
             assert!(
                 !self.contracts.get(&addr).unwrap_or(false)
@@ -98,7 +117,7 @@ mod wyvern_proxy_registry {
         ///dev ProxyRegistry owner only
         ///param addr to :AccountId which to grant permissions
         #[ink(message)]
-        fn end_grant_authentication(&mut self, addr: AccountId) {
+        pub  fn end_grant_authentication(&mut self, addr: AccountId) {
             self.only_owner();
             // assert!(
             //     !contracts[addr] && pending[addr] != 0 && ((pending[addr] + DELAY_PERIOD) < now)
@@ -117,7 +136,7 @@ mod wyvern_proxy_registry {
         ///dev ProxyRegistry owner only
         ///param addr of :AccountId which to revoke permissions
         #[ink(message)]
-        fn revoke_authentication(&mut self, addr: AccountId) {
+      pub  fn revoke_authentication(&mut self, addr: AccountId) {
             self.only_owner();
             self.contracts.insert(&addr, &false);
         }
@@ -126,19 +145,15 @@ mod wyvern_proxy_registry {
         ///dev Must be called by the user which the proxy is for, creates a new AuthenticatedProxy
         ///return New AuthenticatedProxy contract
         #[ink(message)]
-        fn register_proxy(&mut self,ownable_delegate_proxy_address:AccountId) {
+      pub  fn register_proxy(&mut self, ownable_delegate_proxy_address: AccountId) {
             assert!(self.proxies.get(self.env().caller()).is_none());
             self.proxies
                 .insert(&self.env().caller(), &ownable_delegate_proxy_address);
         }
-        /// Panic if the sender is no owner of the wallet.
-        #[ink(message)]
-        fn ensure_from_wallet(&self) {
-            assert_eq!(self.env().caller(), self.env().account_id());
-        }
-    }
+   
+    // }
 
-    impl Ownable for WyvernProxyRegistry {
+    // impl Ownable for WyvernProxyRegistry {
         ///dev Initializes the contract setting the deployer as the initial owner.
         // #[ink(constructor)]
         //fn  new() -> Self {
@@ -149,16 +164,8 @@ mod wyvern_proxy_registry {
 
         ///dev Returns the of :AccountId the current owner.
         #[ink(message)]
-        fn owner(&self) -> AccountId {
+      pub  fn owner(&self) -> AccountId {
             self._owner
-        }
-
-        ///dev Throws if called by any account other than the owner.
-        #[ink(message)]
-        fn only_owner(&self) {
-            // require(owner() == _msgSender(), "Ownable: caller is not the owner");
-            // _;
-            assert_eq!(self.env().caller(), self.owner());
         }
 
         ///dev Leaves the contract without owner. It will not be possible to call
@@ -167,7 +174,7 @@ mod wyvern_proxy_registry {
         /// NOTE: Renouncing ownership will leave the contract without an owner,
         /// thereby removing any functionality that is only available to the owner.
         #[ink(message)]
-        fn renounce_ownership(&mut self) {
+      pub  fn renounce_ownership(&mut self) {
             self.only_owner();
             self._set_owner(AccountId::default());
         }
@@ -175,22 +182,13 @@ mod wyvern_proxy_registry {
         ///dev Transfers ownership of the contract to a new account (`new_owner`).
         /// Can only be called by the current owner.
         #[ink(message)]
-        fn transfer_ownership(&mut self, new_owner: AccountId) {
+       pub  fn transfer_ownership(&mut self, new_owner: AccountId) {
             self.only_owner();
             assert!(
                 new_owner != AccountId::default(),
                 "Ownable: new owner is the zero address"
             ); //,
             self._set_owner(new_owner);
-        }
-        #[ink(message)]
-        fn _set_owner(&mut self, new_owner: AccountId) {
-            let old_owner: AccountId = self._owner;
-            self._owner = new_owner;
-            self.env().emit_event(OwnershipTransferred {
-                previous_owner: old_owner,
-                new_owner,
-            });
         }
     }
 

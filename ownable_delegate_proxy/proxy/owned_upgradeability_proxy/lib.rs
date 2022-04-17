@@ -10,12 +10,12 @@ use ink_prelude::vec::Vec;
 pub trait OwnedUpgradeabilityProxy {
     ///dev Upgrades the implementation address
     ///param implementation representing the of :AccountId the new implementation to be set
-    #[ink(message)]
-    fn _upgrade_to_inner(&mut self, implementation: Hash);
+    // #[ink(message)]
+    // fn _upgrade_to_inner(&mut self, implementation: Hash);
 
-    ///dev Throws if called by any account other than the owner.
-    #[ink(message)]
-    fn only_proxy_owner(&self);
+    // ///dev Throws if called by any account other than the owner.
+    // #[ink(message)]
+    // fn only_proxy_owner(&self);
 
     ///dev Tells the of :AccountId the proxy owner
     ///return the of :AccountId the proxy owner

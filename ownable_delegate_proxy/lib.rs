@@ -13,9 +13,9 @@ mod ownable_delegate_proxy {
     use ink_prelude::vec::Vec;
     use ink_storage::traits::{PackedLayout, SpreadAllocate, SpreadLayout};
 
-    use owned_upgradeability_proxy::OwnedUpgradeabilityProxy;
-    use owned_upgradeability_storage::OwnedUpgradeabilityStorage;
-    use proxy::Proxy;
+    // use owned_upgradeability_proxy::OwnedUpgradeabilityProxy;
+    // use owned_upgradeability_storage::OwnedUpgradeabilityStorage;
+    // use proxy::Proxy;
     use scale::Output;
 
     /// A wrapper that allows us to encode a blob of bytes.
@@ -109,7 +109,7 @@ mod ownable_delegate_proxy {
     /// Add new fields to the below struct in order
     /// to add new static storage fields to your contract.
     #[ink(storage)]
-    #[derive(SpreadAllocate)]
+    // #[derive(SpreadAllocate)]
     pub struct OwnableDelegateProxy {
         proxy: ProxyFields,
     }
@@ -119,16 +119,15 @@ mod ownable_delegate_proxy {
         pub fn new(
             _owner: AccountId,
             _initial_implementation: Hash,
-            _calldata: Vec<u8>,
         ) -> Self {
+            // _calldata: Vec<u8>,
             // set_upgradeability_owner(owner);
             // _upgrade_to_inner(initialImplementation);
             // assert!(initialImplementation.delegatecall(calldata));
    
-            ink_lang::utils::initialize_contract(|_contract: &mut Self| {
-            _contract.proxy._upgradeability_owner=_owner;
-            _contract.proxy._implementation = _initial_implementation;
-            })
+            // ink_lang::utils::initialize_contract(|_contract: &mut Self| {
+            Self{proxy:{ProxyFields{_upgradeability_owner:_owner,_implementation : _initial_implementation}}}
+            // })
         }
 
         /// Changes the `Hash` of the contract where any call that does
@@ -180,37 +179,37 @@ mod ownable_delegate_proxy {
         pub fn contract_address(&self) -> AccountId {
             self.env().account_id()
         }
-    }
-    // impl SpreadLayout for OwnableDelegateProxyRef {
-    //     const FOOTPRINT: u64 = 1;
+     ///dev Sets the of :AccountId the owner
+        // #[ink(message)]
+       pub  fn set_upgradeability_owner(&mut self, new_upgradeability_owner: AccountId) {
+            self.proxy._upgradeability_owner = new_upgradeability_owner;
+        }
+        ///dev Upgrades the implementation address
+        ///param implementation representing the of :AccountId the new implementation to be set
+        // #[ink(message)]
+        pub fn _upgrade_to_inner(&mut self, implementation: Hash) {
+            assert!(self.proxy._implementation != implementation);
+            self.proxy._implementation = implementation;
+            self.env().emit_event(Upgraded { implementation });
+        }
 
-    //     fn pull_spread(ptr: &mut KeyPtr) -> Self {
-    //         Self {
-    //             value: SpreadLayout::pull_spread(ptr),
-    //         }
-    //     }
+        ///dev Throws if called by any account other than the owner.
+        // #[ink(message)]
+       pub  fn only_proxy_owner(&self) {
+            assert!(self.env().caller() == self.proxy_owner());
+            // _;
+        }
 
-    //     fn push_spread(&self, ptr: &mut KeyPtr) {
-    //         SpreadLayout::push_spread(&self.value, ptr);
-    //     }
-
-    //     fn clear_spread(&self, ptr: &mut KeyPtr) {
-    //         SpreadLayout::clear_spread(&self.value, ptr);
-    //     }
     // }
-    impl OwnedUpgradeabilityStorage for OwnableDelegateProxy {
+    // impl OwnedUpgradeabilityStorage for OwnableDelegateProxy {
         ///dev Tells the of :AccountId the owner
         ///return the of :AccountId the owner
         #[ink(message)]
-        fn upgradeability_owner(&self) -> AccountId {
+       pub  fn upgradeability_owner(&self) -> AccountId {
             self.proxy._upgradeability_owner
         }
 
-        ///dev Sets the of :AccountId the owner
-        #[ink(message)]
-        fn set_upgradeability_owner(&mut self, new_upgradeability_owner: AccountId) {
-            self.proxy._upgradeability_owner = new_upgradeability_owner;
-        }
+   
         ///dev Throws if called by any account other than the owner.
         //  #[ink(message)]
         //         fn only_proxy_owner(&self) {
@@ -219,62 +218,48 @@ mod ownable_delegate_proxy {
         ///dev Tells the of :AccountId the current implementation
         ///return of :AccountId the current implementation
         #[ink(message)]
-        fn implementation(&self) -> Hash {
+        pub fn implementation(&self) -> Hash {
             self.proxy._implementation
         }
 
         ///dev Tells the proxy type (EIP 897)
         ///return Proxy type, 2 for forwarding proxy
         #[ink(message)]
-        fn proxy_type(&self) -> u32 {
+        pub fn proxy_type(&self) -> u32 {
             2
         }
-    }
+    // }
 
-    impl Proxy for OwnableDelegateProxy {
+    // impl Proxy for OwnableDelegateProxy {
         ///dev Tells the of :AccountId the current implementation
         ///return of :AccountId the current implementation
-        #[ink(message)]
-        fn implementation(&self) -> Hash {
-            self.proxy._implementation
-        }
+    //     #[ink(message)]
+    //    pub  fn implementation(&self) -> Hash {
+    //         self.proxy._implementation
+    //     }
 
-        ///dev Tells the proxy type (EIP 897)
-        ///return Proxy type, 2 for forwarding proxy
-        #[ink(message)]
-        fn proxy_type(&self) -> u32 {
-            2
-        }
-    }
+        // ///dev Tells the proxy type (EIP 897)
+        // ///return Proxy type, 2 for forwarding proxy
+        // #[ink(message)]
+        // pub fn proxy_type(&self) -> u32 {
+        //     2
+        // }
+    // }
 
-    impl OwnedUpgradeabilityProxy for OwnableDelegateProxy {
-        ///dev Upgrades the implementation address
-        ///param implementation representing the of :AccountId the new implementation to be set
-        #[ink(message)]
-        fn _upgrade_to_inner(&mut self, implementation: Hash) {
-            assert!(self.proxy._implementation != implementation);
-            self.proxy._implementation = implementation;
-            self.env().emit_event(Upgraded { implementation });
-        }
-
-        ///dev Throws if called by any account other than the owner.
-        #[ink(message)]
-        fn only_proxy_owner(&self) {
-            assert!(self.env().caller() == self.proxy_owner());
-            // _;
-        }
+    // impl OwnedUpgradeabilityProxy for OwnableDelegateProxy {
+      
 
         ///dev Tells the of :AccountId the proxy owner
         ///return the of :AccountId the proxy owner
         #[ink(message)]
-        fn proxy_owner(&self) -> AccountId {
+        pub fn proxy_owner(&self) -> AccountId {
             self.upgradeability_owner()
         }
 
         ///dev Allows the current owner to transfer control of the contract to a new_owner.
         ///param new_owner The to :AccountId transfer ownership to.
         #[ink(message)]
-        fn transfer_proxy_ownership(&mut self, new_owner: AccountId) {
+        pub fn transfer_proxy_ownership(&mut self, new_owner: AccountId) {
             self.only_proxy_owner();
             assert!(new_owner != AccountId::default());
             // emit ProxyOwnershipTransferred(proxy_owner(), new_owner);
@@ -289,7 +274,7 @@ mod ownable_delegate_proxy {
         ///dev Allows the upgradeability owner to upgrade the current implementation of the proxy.
         ///param implementation representing the of :AccountId the new implementation to be set.
         #[ink(message)]
-        fn upgrade_to(&mut self, implementation: Hash) {
+        pub fn upgrade_to(&mut self, implementation: Hash) {
             self.only_proxy_owner();
             self._upgrade_to_inner(implementation);
         }
@@ -300,7 +285,7 @@ mod ownable_delegate_proxy {
         ///param data represents the msg.data to bet sent in the low level call. This parameter may include the fn
         ///signature of the implementation to be called with the needed payload
         #[ink(message, payable)]
-        fn upgrade_to_and_call(&mut self, implementation: Hash, data: Vec<u8>) {
+        pub fn upgrade_to_and_call(&mut self, implementation: Hash, data: Vec<u8>) {
             self.only_proxy_owner();
             self.upgrade_to(implementation);
 

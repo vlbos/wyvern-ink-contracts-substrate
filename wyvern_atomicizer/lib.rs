@@ -62,17 +62,18 @@ use ink_lang as ink;
 mod wyvern_atomicizer {
     use ink_env::call::{build_call, Call, ExecutionInput};
     use ink_prelude::vec::Vec;
-    use ink_storage::{
-        traits::{PackedLayout, SpreadAllocate, SpreadLayout},
-        Mapping,
-    };
+    // use ink_storage::{
+    //     traits::{PackedLayout, SpreadAllocate, SpreadLayout},
+    //     Mapping,
+    // };
+    use ink_storage::traits::SpreadAllocate;
     use scale::Output;
 
-    /// Tune this to your liking but be wary that allowing too many owners will not perform well.
-    const MAX_OWNERS: u32 = 50;
+    // /// Tune this to your liking but be wary that allowing too many owners will not perform well.
+    // const MAX_OWNERS: u32 = 50;
 
-    type TransactionId = u32;
-    const WRONG_TRANSACTION_ID: &str = "The user specified an invalid transaction id. Abort.";
+    // type TransactionId = u32;
+    // const WRONG_TRANSACTION_ID: &str = "The user specified an invalid transaction id. Abort.";
 
     /// A wrapper that allows us to encode a blob of Vec<u8>.
     ///
@@ -137,7 +138,7 @@ mod wyvern_atomicizer {
         /// If `requirement` violates our invariant.
         #[ink(constructor)]
         pub fn new() -> Self {
-            ink_lang::utils::initialize_contract(|contract: &mut Self| {})
+            ink_lang::utils::initialize_contract(|_contract: &mut Self| {})
         }
 
         /// Evaluate a confirmed execution and return its output as Vec<u8>.

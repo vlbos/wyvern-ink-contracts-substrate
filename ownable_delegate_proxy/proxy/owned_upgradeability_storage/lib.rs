@@ -12,8 +12,8 @@ pub trait OwnedUpgradeabilityStorage {
     fn upgradeability_owner(&self) -> AccountId;
 
     ///dev Sets the of :AccountId the owner
-    #[ink(message)]
-    fn set_upgradeability_owner(&mut self, new_upgradeability_owner: AccountId);
+    // #[ink(message)]
+    // fn set_upgradeability_owner(&mut self, new_upgradeability_owner: AccountId);
 
     ///dev Tells the of :AccountId the current implementation
     ///return of :AccountId the current implementation

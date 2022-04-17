@@ -14,7 +14,7 @@ mod authenticated_proxy {
     // use ink_storage::traits::SpreadAllocate;
     use ink_storage::traits::{PackedLayout, SpreadAllocate, SpreadLayout};
     use scale::Output;
-    use token_recipient::TokenRecipient;
+    // use token_recipient::TokenRecipient;
     /// A wrapper that allows us to encode a blob of bytes.
     ///
     /// We use this to pass the set of untyped (bytes) parameters to the `CallBuilder`.
@@ -171,16 +171,16 @@ mod authenticated_proxy {
         pub fn contract_address(&self) -> AccountId {
             self.env().account_id()
         }
-    }
+    // }
 
-    impl TokenRecipient for AuthenticatedProxy {
+    // impl TokenRecipient for AuthenticatedProxy {
         ///@dev Receive tokens and generate a log event
         ///@param from from :AccountId which to transfer tokens
         ///@param value Amount of tokens to transfer
         ///@param token of :AccountId token
         ///@param extra_data Additional data to log
         #[ink(message)]
-        fn receive_approval(
+       pub fn receive_approval(
             &self,
             from: AccountId,
             value: Balance,
@@ -230,7 +230,7 @@ mod authenticated_proxy {
         /// The method needs to be annotated with `payable`; only then it is
         /// allowed to receive value as part of the call.
         #[ink(message, payable)]
-        fn was_it_ten(&self) {
+        pub fn was_it_ten(&self) {
             ink_env::debug_println!("received payment: {}", self.env().transferred_value());
             assert!(self.env().transferred_value() == 10, "payment was not ten");
             self.env().emit_event(ReceivedEther {
