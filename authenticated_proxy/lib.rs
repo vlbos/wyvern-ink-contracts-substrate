@@ -46,7 +46,7 @@ mod authenticated_proxy {
 
     // TokenRecipient
     #[ink(event)]
-    pub struct ReceivedEther {
+    pub struct ReceivedNativeToken {
         #[ink(topic)]
         sender: AccountId,
         amount: Balance,
@@ -91,9 +91,7 @@ mod authenticated_proxy {
         /// Constructor that initializes the `bool` value to the given `init_value`.
         #[ink(constructor)]
         pub fn new() -> Self {
-            ink_lang::utils::initialize_contract(|_contract: &mut Self| {
-               
-            })
+            ink_lang::utils::initialize_contract(|_contract: &mut Self| {})
         }
 
         ///Initialize an AuthenticatedProxy
@@ -124,15 +122,43 @@ mod authenticated_proxy {
         ///@param calldata Calldata to send
         ///@return Result of the call (success or failure)
         #[ink(message)]
-        pub fn proxy(&self, dest: AccountId, _how_to_call: HowToCall, calldata: Vec<u8>) -> bool {
-            assert!(self.env().caller() == *self.user || (!*self.revoked)); //&& self.registry.contracts(self.env().caller())
-                                                                          // if (how_to_call == HowToCall::Call) {
-                                                                          //      result = dest.call(calldata);
-                                                                          // } else if (how_to_call == HowToCall::DelegateCall) {
-                                                                          //      result = dest.delegatecall(calldata);
-                                                                          // }
+        pub fn proxy(
+            &mut self,
+            dest: AccountId,
+            _how_to_call: HowToCall,
+            calldata: Vec<u8>,
+        ) -> bool {
+            assert!(self.env().caller() == *self.user || (!*self.revoked));
+            //&& self.registry.contracts(self.env().caller())
+            // if (how_to_call == HowToCall::Call) {
+            //      result = dest.call(calldata);
+            // } else if (how_to_call == HowToCall::DelegateCall) {
+            //      result = dest.delegatecall(calldata);
+            // }
             let gas_limit = 0;
             let transferred_value = 0;
+            let contracts_selector = [0x80, 0x05, 0xa4, 0x70];
+            ink_env::debug_println!(
+                "  before created new instance at {:?},caller={:?}",
+                self.registry,
+                self.env().caller()
+            );
+            let result = build_call::<<Self as ::ink_lang::reflect::ContractEnv>::Env>()
+                .call_type(
+                    Call::new()
+                        .callee(*self.registry)
+                        .gas_limit(gas_limit)
+                        .transferred_value(transferred_value),
+                )
+                .exec_input(
+                    ExecutionInput::new(contracts_selector.into()).push_arg(self.env().caller()),
+                )
+                .returns::<bool>()
+                .fire()
+                .map_err(|_| Error::TransactionFailed);
+            ink_env::debug_println!("created new instance at {:?}", result);
+            assert!(result.unwrap());
+
             let mut selector = calldata;
             let input = selector.split_off(4);
 
@@ -164,24 +190,24 @@ mod authenticated_proxy {
         ///@param calldata Calldata to send
 
         #[ink(message)]
-        pub fn proxy_assert(&self, dest: AccountId, how_to_call: HowToCall, calldata: Vec<u8>) {
+        pub fn proxy_assert(&mut self, dest: AccountId, how_to_call: HowToCall, calldata: Vec<u8>) {
             assert!(self.proxy(dest, how_to_call, calldata));
         }
         #[ink(message)]
         pub fn contract_address(&self) -> AccountId {
             self.env().account_id()
         }
-    // }
+        // }
 
-    // impl TokenRecipient for AuthenticatedProxy {
+        // impl TokenRecipient for AuthenticatedProxy {
         ///@dev Receive tokens and generate a log event
         ///@param from from :AccountId which to transfer tokens
         ///@param value Amount of tokens to transfer
         ///@param token of :AccountId token
         ///@param extra_data Additional data to log
         #[ink(message)]
-       pub fn receive_approval(
-            &self,
+        pub fn receive_approval(
+            &mut self,
             from: AccountId,
             value: Balance,
             token: AccountId,
@@ -219,7 +245,7 @@ mod authenticated_proxy {
         }
         ///@dev Receive Ether and generate a log event
         // pub fn () payable public {
-        //     emit ReceivedEther(self.env().caller(), self.env().caller());
+        //     emit ReceivedNativeToken(self.env().caller(), self.env().caller());
         // }
         /// Asserts that the token amount sent as payment with this call
         /// is exactly `10`. This method will fail otherwise, and the
@@ -230,10 +256,10 @@ mod authenticated_proxy {
         /// The method needs to be annotated with `payable`; only then it is
         /// allowed to receive value as part of the call.
         #[ink(message, payable)]
-        pub fn was_it_ten(&self) {
+        pub fn receive_native_token(&self) {
             ink_env::debug_println!("received payment: {}", self.env().transferred_value());
-            assert!(self.env().transferred_value() == 10, "payment was not ten");
-            self.env().emit_event(ReceivedEther {
+            // assert!(self.env().transferred_value() == 10, "payment was not ten");
+            self.env().emit_event(ReceivedNativeToken {
                 sender: self.env().caller(),
                 amount: self.env().transferred_value(),
             });

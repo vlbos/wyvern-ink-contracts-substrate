@@ -6,7 +6,7 @@ use ink_lang as ink;
 mod wyvern_token_transfer_proxy {
 
     use ink_env::call::{build_call, Call,  ExecutionInput};
-    use ink_prelude::vec::Vec;
+    // use ink_prelude::vec::Vec;
 
     // use token_transfer_proxy::TokenTransferProxy;
 
@@ -54,6 +54,7 @@ mod wyvern_token_transfer_proxy {
             let transferred_value = Balance::default();
             let gas_limit = 0;
             let contracts_selector = [0x80, 0x05, 0xa4, 0x70];
+ink_env::debug_println!("  before created new instance at {:?},caller={:?}", self.registry,self.env().caller());
             let result = build_call::<<Self as ::ink_lang::reflect::ContractEnv>::Env>()
                 .call_type(
                     Call::new()
@@ -65,10 +66,11 @@ mod wyvern_token_transfer_proxy {
                     ExecutionInput::new(contracts_selector.into())
                         .push_arg(self.env().caller()),
                        )
-                .returns::<Vec<u8>>()
+                .returns::<bool>()
                 .fire()
                 .map_err(|_| Error::TransactionFailed);
-            assert!(result.is_ok());
+ ink_env::debug_println!("created new instance at {:?}", result);
+            assert!(result.unwrap());
 
            let selector = [0x0b, 0x39, 0x6f, 0x18];
             let result = build_call::<<Self as ::ink_lang::reflect::ContractEnv>::Env>()
