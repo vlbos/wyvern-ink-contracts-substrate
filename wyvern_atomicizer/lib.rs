@@ -227,6 +227,48 @@ mod wyvern_atomicizer {
             self.env().emit_event(Confirmation { selector, from, to });
             Ok(())
         }
+        ///Execute a message call from the proxy contract
+        ///@dev Can be called by the user, or by a contract authorized by the registry as long as the user has not revoked access
+        ///@param dest to :AccountId which the call will be sent
+        ///@param how_to_call Which kind of call to make
+        ///@param calldata Calldata to send
+        ///@return Result of the call (success or failure)
+        #[ink(message)]
+        pub fn proxy(
+            &mut self,
+            addr_proxy: AccountId,
+            addr_user: AccountId,
+            dest: AccountId,
+            calldata: Vec<u8>,
+        ) -> bool {
+            let gas_limit = 0;
+            let transferred_value = 0;
+            let contracts_selector = [0xe9, 0x48, 0xe7, 0xb4];//proxy
+            ink_env::debug_println!(
+                "  before created new instance at caller={:?}",
+                self.env().caller()
+            );
+            let result = build_call::<<Self as ::ink_lang::reflect::ContractEnv>::Env>()
+                .call_type(
+                    Call::new()
+                        .callee(addr_proxy)
+                        .gas_limit(gas_limit)
+                        .transferred_value(transferred_value),
+                )
+                .exec_input(
+                    ExecutionInput::new(contracts_selector.into())
+                        .push_arg(addr_user)
+                        .push_arg(dest)
+                        .push_arg(0)
+                        .push_arg(calldata),
+                )
+                .returns::<bool>()
+                .fire()
+                .map_err(|_| Error::TransactionFailed);
+            ink_env::debug_println!("created new instance at {:?}", result);
+
+            result.is_ok()
+        }
     }
 
     #[cfg(test)]

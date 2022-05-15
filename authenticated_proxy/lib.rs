@@ -8,11 +8,12 @@ use ink_lang as ink;
 mod upgradeable;
 #[ink::contract]
 mod authenticated_proxy {
-    use crate::upgradeable::{NotInitialized, Upgradeable};
+    // use crate::upgradeable::{NotInitialized,Upgradeable};
     use ink_env::call::{build_call, Call, ExecutionInput};
     use ink_prelude::vec::Vec;
     // use ink_storage::traits::SpreadAllocate;
-    use ink_storage::traits::{PackedLayout, SpreadAllocate, SpreadLayout};
+    use ink_storage::{traits::{PackedLayout, SpreadAllocate, SpreadLayout},        Mapping,
+};
     use scale::Output;
     // use token_recipient::TokenRecipient;
     /// A wrapper that allows us to encode a blob of bytes.
@@ -36,6 +37,7 @@ mod authenticated_proxy {
         Call,
         DelegateCall,
     }
+
     /// Errors that can occur upon calling this contract.
     #[derive(Copy, Clone, Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
     #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
@@ -65,6 +67,7 @@ mod authenticated_proxy {
     /// Event fired when the proxy access is revoked or unrevoked.
     #[ink(event)]
     pub struct Revoked {
+        addr_user:AccountId,
         revoked: bool,
     }
 
@@ -75,16 +78,16 @@ mod authenticated_proxy {
     #[derive(SpreadAllocate)]
     pub struct AuthenticatedProxy {
         /// Whether initialized.
-        initialized: Upgradeable<bool, NotInitialized>,
+        initialized: Mapping<AccountId,bool>,
 
         /// which :AccountId owns this proxy.
-        user: Upgradeable<AccountId, NotInitialized>,
+        user: Mapping<AccountId,AccountId>,
 
         /// Associated registry with contract authentication information.
-        registry: Upgradeable<AccountId, NotInitialized>,
+        registry:Mapping<AccountId, AccountId>,
 
         /// Whether access has been revoked.
-        revoked: Upgradeable<bool, NotInitialized>,
+        revoked: Mapping<AccountId,bool>,
     }
 
     impl AuthenticatedProxy {
@@ -99,20 +102,20 @@ mod authenticated_proxy {
         ///@param addr_registry of :AccountId ProxyRegistry contract which will manage this proxy
         #[ink(message)]
         pub fn initialize(&mut self, addr_user: AccountId, addr_registry: AccountId) {
-            assert!(!*self.initialized);
-            *self.initialized = true;
-            *self.user = addr_user;
-            *self.registry = addr_registry;
+            assert!(!self.initialized.get(addr_user).unwrap_or(false));
+            self.initialized.insert(addr_user,&true)  ;
+            self.user.insert(addr_user,&addr_user);
+            self.registry.insert(addr_user,&addr_registry);
         }
 
         ///Set the revoked flag (allows a user to revoke ProxyRegistry access)
         ///@dev Can be called by the user only
         ///@param revoke Whether or not to revoke access
         #[ink(message)]
-        pub fn set_revoke(&mut self, revoke: bool) {
-            assert_eq!(self.env().caller(), *self.user);
-            *self.revoked = revoke;
-            self.env().emit_event(Revoked { revoked: revoke });
+        pub fn set_revoke(&mut self, addr_user: AccountId, revoke: bool) {
+            assert_eq!(self.env().caller(), self.user.get(addr_user).unwrap_or(AccountId::default()));
+            self.revoked.insert(addr_user,&revoke);
+            self.env().emit_event(Revoked {addr_user,revoked: revoke });
         }
 
         ///Execute a message call from the proxy contract
@@ -124,17 +127,19 @@ mod authenticated_proxy {
         #[ink(message)]
         pub fn proxy(
             &mut self,
+            addr_user: AccountId,
             dest: AccountId,
             _how_to_call: HowToCall,
             calldata: Vec<u8>,
         ) -> bool {
-            assert!(self.env().caller() == *self.user || (!*self.revoked));
+            assert!(self.env().caller() == self.user.get(addr_user).unwrap_or(AccountId::default()) || (!self.revoked.get(addr_user).unwrap_or(false)));
             //&& self.registry.contracts(self.env().caller())
             // if (how_to_call == HowToCall::Call) {
             //      result = dest.call(calldata);
             // } else if (how_to_call == HowToCall::DelegateCall) {
             //      result = dest.delegatecall(calldata);
             // }
+            assert!(self.registry.get(addr_user).is_some());
             let gas_limit = 0;
             let transferred_value = 0;
             let contracts_selector = [0x80, 0x05, 0xa4, 0x70];
@@ -146,7 +151,7 @@ mod authenticated_proxy {
             let result = build_call::<<Self as ::ink_lang::reflect::ContractEnv>::Env>()
                 .call_type(
                     Call::new()
-                        .callee(*self.registry)
+                        .callee(self.registry.get(addr_user).unwrap())
                         .gas_limit(gas_limit)
                         .transferred_value(transferred_value),
                 )
@@ -190,8 +195,8 @@ mod authenticated_proxy {
         ///@param calldata Calldata to send
 
         #[ink(message)]
-        pub fn proxy_assert(&mut self, dest: AccountId, how_to_call: HowToCall, calldata: Vec<u8>) {
-            assert!(self.proxy(dest, how_to_call, calldata));
+        pub fn proxy_assert(&mut self, addr_user: AccountId, dest: AccountId, how_to_call: HowToCall, calldata: Vec<u8>) {
+            assert!(self.proxy(addr_user,dest, how_to_call, calldata));
         }
         #[ink(message)]
         pub fn contract_address(&self) -> AccountId {

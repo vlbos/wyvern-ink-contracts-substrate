@@ -59,9 +59,9 @@ mod ownable_delegate_proxy {
     /// The reason this is a separate structure is that we want to keep
     /// the data for this contract in a separate place (as in the implementation
     /// of [`SpreadLayout`](ink_storage::traits::SpreadLayout)), so that it does not get
-    /// overwritten by any contract upgrade, which might introduce storage changes.
+    /// overwritten by any contract upgrade, which might introduce storage changes.SpreadAllocate,
     #[derive(Debug)]
-    #[derive(scale::Encode, scale::Decode, Clone, Copy, SpreadAllocate, PackedLayout)]
+    #[derive(scale::Encode, scale::Decode, Clone, Copy,  PackedLayout)]
     #[cfg_attr(feature = "std", derive(ink_storage::traits::StorageLayout))]
     struct ProxyFields {
         /// The `Hash` of a contract code where any call that does not match a

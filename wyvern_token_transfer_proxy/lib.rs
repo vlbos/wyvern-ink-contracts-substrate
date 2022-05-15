@@ -5,12 +5,12 @@ use ink_lang as ink;
 #[ink::contract]
 mod wyvern_token_transfer_proxy {
 
-    use ink_env::call::{build_call, Call,  ExecutionInput};
+    use ink_env::call::{build_call, Call, ExecutionInput};
     // use ink_prelude::vec::Vec;
 
     // use token_transfer_proxy::TokenTransferProxy;
 
-   /// Errors that can occur upon calling this contract.
+    /// Errors that can occur upon calling this contract.
     #[derive(Copy, Clone, Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
     #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
     pub enum Error {
@@ -31,9 +31,9 @@ mod wyvern_token_transfer_proxy {
         pub fn new(registry: AccountId) -> Self {
             Self { registry }
         }
-    // }
+        // }
 
-    // impl TokenTransferProxy for WyvernTokenTransferProxy {
+        // impl TokenTransferProxy for WyvernTokenTransferProxy {
 
         /// Call ERC20 `transferFrom`
         ///  Authenticated contract only
@@ -48,13 +48,17 @@ mod wyvern_token_transfer_proxy {
             from: AccountId,
             to: AccountId,
             amount: Balance,
-        )  {
+        ) {
             // require(registry.contracts(self.env().caller()));
             // return ERC20(token).transferFrom(from, to, amount);
             let transferred_value = Balance::default();
             let gas_limit = 0;
             let contracts_selector = [0x80, 0x05, 0xa4, 0x70];
-ink_env::debug_println!("  before created new instance at {:?},caller={:?}", self.registry,self.env().caller());
+            ink_env::debug_println!(
+                "  before created new instance at {:?},caller={:?}",
+                self.registry,
+                self.env().caller()
+            );
             let result = build_call::<<Self as ::ink_lang::reflect::ContractEnv>::Env>()
                 .call_type(
                     Call::new()
@@ -63,16 +67,15 @@ ink_env::debug_println!("  before created new instance at {:?},caller={:?}", sel
                         .transferred_value(transferred_value),
                 )
                 .exec_input(
-                    ExecutionInput::new(contracts_selector.into())
-                        .push_arg(self.env().caller()),
-                       )
+                    ExecutionInput::new(contracts_selector.into()).push_arg(self.env().caller()),
+                )
                 .returns::<bool>()
                 .fire()
                 .map_err(|_| Error::TransactionFailed);
- ink_env::debug_println!("created new instance at {:?}", result);
+            ink_env::debug_println!("created new instance at {:?}", result);
             assert!(result.unwrap());
 
-           let selector = [0x0b, 0x39, 0x6f, 0x18];
+            let selector = [0x0b, 0x39, 0x6f, 0x18];
             let result = build_call::<<Self as ::ink_lang::reflect::ContractEnv>::Env>()
                 .call_type(
                     Call::new()
